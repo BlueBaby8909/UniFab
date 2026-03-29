@@ -1,57 +1,97 @@
-    import bcrypt from 'bcrypt';
-    import jwt from 'jsonwebtoken';
-    import { createUser, findUserByEmail } from '../models/user.model.js';
-    import dotenv from 'dotenv';
+import {
+  createUser,
+  findUserByEmail,
+  findUserById,
+  generateAccessToken,
+  generateRefreshToken,
+  generateTemporaryToken,
+  saveRefreshToken,
+  saveEmailVerificationToken,
+} from "../models/user.model.js";
+import { ApiResponse } from "../utils/api-response.js";
+import { ApiError } from "../utils/api-error.js";
+import { asyncHandler } from "../utils/async-handler.js";
+import { sendEmail } from "../utils/mail.js";
 
-    dotenv.config();
+const generateAccessAndRefreshTokens = async (userId) => {
+  try {
+    const user = await findUserById(userId);
 
-    async function registerUser(req, res) {
-        const {firstName, lastName, email, password, role } = req.body;
-        try{
-            const existingUser = await findUserByEmail(email);
-            if (existingUser){
-                return res.status(409).json({ message: 'Email already registered' });
-            }
-            const hashedPassword =  await bcrypt.hash(password, 10);
-
-            await createUser(firstName, lastName, email, hashedPassword, role);
-            
-            return res.status(201).json({message: 'User registered successfully',
-        });
-        }catch(error){
-        console.error(error);
-        return res.status(500).json({message: 'Server Error'})
-        }
+    if (!user) {
+      throw new ApiError(404, "User not found");
     }
 
-    async function loginUser(req, res) {
-        const { email, password } = req.body;
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
 
-        try {
-            const user = await findUserByEmail(email);
+    await saveRefreshToken(userId, refreshToken);
 
-            if (!user) {
-                return res.status(401).json({ message: 'Invalid email or password' });
-            }
+    return { accessToken, refreshToken };
+  } catch (error) {
+    throw new ApiError(
+      500,
+      "Something went wrong while generating access token",
+    );
+  }
+};
 
-            const correctPass = await bcrypt.compare(password, user.password);
+const registerUser = asyncHandler(async (req, res) => {
+  const { firstName, lastName, email, password, role } = req.body;
 
-            if (!correctPass) {
-                return res.status(401).json({ message: 'Invalid email or password' });
-            }
-            const token = jwt.sign(
-                { id: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d'}
-            )
+  const existedUser = await findUserByEmail(email);
 
-            return res.status(200).json({ 
-                message: 'Login successful', token
-            });
+  if (existedUser) {
+    throw new ApiError(409, "User with email already exists", []);
+  }
 
-        } catch (error) {
-            console.error("Login Error:", error);
-            return res.status(500).json({ message: 'Server Error' });
-        }
-    }
+  const result = await createUser(firstName, lastName, email, password, role);
 
+  const user = await findUserById(result.insertId);
 
-    export { registerUser, loginUser };
+  if (!user) {
+    throw new ApiError(500, "Something went wrong while registering a user");
+  }
+
+  const { unHashedToken, hashedToken, tokenExpiry } = generateTemporaryToken();
+
+  await saveEmailVerificationToken(user.id, hashedToken, new Date(tokenExpiry));
+
+  await sendEmail({
+    to: user.email,
+    subject: "Please verify your email",
+    emailTextual: `Please verify your email by visiting this link: ${req.protocol}://${req.get("host")}/api/v1/users/verify-email/${unHashedToken}`,
+    emailHTML: `<p>Please verify your email by clicking the link below:</p>
+                <a href="${req.protocol}://${req.get("host")}/api/v1/users/verify-email/${unHashedToken}">
+                  Verify Email
+                </a>`,
+  });
+
+  const createdUser = await findUserById(user.id);
+
+  if (!createdUser) {
+    throw new ApiError(500, "Something went wrong while fetching created user");
+  }
+
+  const safeUser = {
+    id: createdUser.id,
+    firstName: createdUser.first_name,
+    lastName: createdUser.last_name,
+    email: createdUser.email,
+    role: createdUser.role,
+    isEmailVerified: createdUser.is_email_verified,
+    createdAt: createdUser.created_at,
+    updatedAt: createdUser.updated_at,
+  };
+
+  return res
+    .status(201)
+    .json(
+      new ApiResponse(
+        200,
+        { user: safeUser },
+        "User registered successfully and verification email has been sent on your email",
+      ),
+    );
+});
+
+export { registerUser, generateAccessAndRefreshTokens };
