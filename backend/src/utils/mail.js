@@ -22,17 +22,9 @@ const sendEmail = async (options) => {
     },
   });
 
-  await transporter.sendMail({
+  const mail = {
     from: "UniFab <support@unifab.com>",
     to: options.to,
-    subject: options.subject,
-    text: emailTextual,
-    html: emailHTML,
-  });
-
-  const mail = {
-    from: "mail.unifab@example.com",
-    to: options.email,
     subject: options.subject,
     text: emailTextual,
     html: emailHTML,
@@ -41,7 +33,7 @@ const sendEmail = async (options) => {
   try {
     await transporter.sendMail(mail);
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error("Email service failed to send email:", error);
   }
 };
 

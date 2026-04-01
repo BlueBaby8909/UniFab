@@ -66,7 +66,7 @@ function generateAccessToken(user) {
       role: user.role,
     },
     process.env.ACCESS_TOKEN_SECRET,
-    { expiresIn: process.env.ACCESS_TOKEN_EXPIRY },
+    { expiresIn: process.env.ACCESS_TOKEN_EXPIRATION },
   );
 }
 
@@ -76,7 +76,7 @@ function generateRefreshToken(user) {
       id: user.id,
     },
     process.env.REFRESH_TOKEN_SECRET,
-    { expiresIn: process.env.REFRESH_TOKEN_EXPIRY },
+    { expiresIn: process.env.REFRESH_TOKEN_EXPIRATION },
   );
 }
 
@@ -152,6 +152,12 @@ async function verifyEmail(userId) {
   return result;
 }
 
+async function clearRefreshToken(userId) {
+  const sql = "UPDATE users SET refresh_token = NULL WHERE id = ?";
+  const [result] = await pool.query(sql, [userId]);
+  return result;
+}
+
 export {
   createUser,
   findUserByEmail,
@@ -164,4 +170,5 @@ export {
   saveForgotPasswordToken,
   saveEmailVerificationToken,
   verifyEmail,
+  clearRefreshToken,
 };
