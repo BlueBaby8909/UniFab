@@ -295,13 +295,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       .status(200)
       .cookie("accessToken", accessToken, options)
       .cookie("refreshToken", refreshToken, options)
-      .json(
-        new ApiResponse(
-          200,
-          { accessToken, refreshToken },
-          "Access token refreshed successfully",
-        ),
-      );
+      .json(new ApiResponse(200, {}, "Access token refreshed successfully"));
   } catch (error) {
     throw new ApiError(401, "Invalid refresh token");
   }
@@ -360,7 +354,7 @@ const resetForgotPassword = asyncHandler(async (req, res) => {
   const user = await findUserByForgotPasswordToken(hashedToken);
 
   if (!user) {
-    throw new ApiError(489, "Invalid or expired password reset token");
+    throw new ApiError(400, "Invalid or expired password reset token");
   }
 
   await updatePassword(user.id, newPassword);

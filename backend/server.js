@@ -11,10 +11,24 @@ const port = process.env.PORT;
 
 app.use(cookieParser());
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+    credentials: true,
+  }),
+);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/healthcheck", healthCheckRoutes);
 
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
+});
+
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+  res.status(statusCode).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+    errors: err.errors || [],
+  });
 });
