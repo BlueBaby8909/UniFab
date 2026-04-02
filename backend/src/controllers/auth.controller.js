@@ -118,14 +118,10 @@ const loginUser = asyncHandler(async (req, res) => {
 
   const user = await findUserByEmail(email);
 
-  if (!user) {
-    throw new ApiError(401, "User with email not found");
-  }
-
   const isMatch = await isPasswordCorrect(password, user.password);
 
-  if (!isMatch) {
-    throw new ApiError(401, "Incorrect password");
+  if (!user || !isMatch) {
+    throw new ApiError(401, "Invalid email or password");
   }
 
   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(

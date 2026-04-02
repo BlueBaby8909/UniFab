@@ -20,10 +20,6 @@ app.use(
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/healthcheck", healthCheckRoutes);
 
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
-});
-
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500;
   res.status(statusCode).json({
@@ -31,4 +27,8 @@ app.use((err, req, res, next) => {
     message: err.message || "Internal Server Error",
     errors: err.errors || [],
   });
+});
+
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
 });
