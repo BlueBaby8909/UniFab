@@ -46,6 +46,20 @@ async function findUserByEmail(email) {
   return rows[0] || null;
 }
 
+async function findUserByEmailVerificationToken(token) {
+  const sql =
+    "SELECT * FROM users WHERE email_verification_token = ? AND email_verification_expiry > NOW() LIMIT 1";
+  const [rows] = await pool.query(sql, [token]);
+  return rows[0] || null;
+}
+
+async function findUserByForgotPasswordToken(token) {
+  const sql =
+    "SELECT * FROM users WHERE forgot_password_token = ? AND forgot_password_expiry > NOW() LIMIT 1";
+  const [rows] = await pool.query(sql, [token]);
+  return rows[0] || null;
+}
+
 async function findUserById(id) {
   const sql = "SELECT * FROM users WHERE id = ? LIMIT 1";
   const [rows] = await pool.query(sql, [id]);
@@ -139,7 +153,7 @@ async function saveEmailVerificationToken(
   return result;
 }
 
-async function verifyEmail(userId) {
+async function markEmailAsVerified(userId) {
   const sql = `
     UPDATE users
     SET
@@ -149,6 +163,20 @@ async function verifyEmail(userId) {
     WHERE id = ?
   `;
   const [result] = await pool.query(sql, [userId]);
+  return result;
+}
+
+async function updatePassword(userId, newPassword) {
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  const sql = `
+    UPDATE users
+    SET 
+      password = ?,
+      forgot_password_token = NULL,
+      forgot_password_expiry = NULL
+    WHERE id = ?
+  `;
+  const [result] = await pool.query(sql, [hashedPassword, userId]);
   return result;
 }
 
@@ -162,6 +190,8 @@ export {
   createUser,
   findUserByEmail,
   findUserById,
+  findUserByEmailVerificationToken,
+  findUserByForgotPasswordToken,
   isPasswordCorrect,
   generateAccessToken,
   generateRefreshToken,
@@ -169,6 +199,7 @@ export {
   saveRefreshToken,
   saveForgotPasswordToken,
   saveEmailVerificationToken,
-  verifyEmail,
+  markEmailAsVerified,
+  updatePassword,
   clearRefreshToken,
 };
