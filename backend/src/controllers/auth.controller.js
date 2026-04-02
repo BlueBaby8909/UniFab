@@ -9,6 +9,7 @@ import {
   generateRefreshToken,
   generateTemporaryToken,
   saveRefreshToken,
+  saveForgotPasswordToken,
   saveEmailVerificationToken,
   markEmailAsVerified,
   updatePassword,
@@ -91,8 +92,6 @@ const registerUser = asyncHandler(async (req, res) => {
     email: createdUser.email,
     role: createdUser.role,
     isEmailVerified: createdUser.is_email_verified,
-    createdAt: createdUser.created_at,
-    updatedAt: createdUser.updated_at,
   };
 
   return res
@@ -142,13 +141,12 @@ const loginUser = asyncHandler(async (req, res) => {
     email: loggedInUser.email,
     role: loggedInUser.role,
     isEmailVerified: loggedInUser.is_email_verified,
-    createdAt: loggedInUser.created_at,
-    updatedAt: loggedInUser.updated_at,
   };
 
   const options = {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
   };
 
   return res
@@ -160,8 +158,6 @@ const loginUser = asyncHandler(async (req, res) => {
         200,
         {
           user: safeUser,
-          accessToken,
-          refreshToken,
         },
         "User logged in successfully",
       ),
@@ -179,7 +175,8 @@ const logoutUser = asyncHandler(async (req, res) => {
 
   const options = {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
   };
 
   return res
@@ -290,7 +287,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
     const options = {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
     };
 
     return res
@@ -315,10 +313,15 @@ const forgotPasswordRequest = asyncHandler(async (req, res) => {
   const user = await findUserByEmail(email);
 
   if (!user) {
-    throw new ApiError(
-      404,
-      "If an account with that email exists, a reset link has been sent.",
-    );
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          {},
+          "If any account is associated with the email, a password reset email has been sent",
+        ),
+      );
   }
 
   const { unHashedToken, hashedToken, tokenExpiry } = generateTemporaryToken();
