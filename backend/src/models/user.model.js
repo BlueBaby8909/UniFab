@@ -169,14 +169,17 @@ async function markEmailAsVerified(userId) {
 
 async function updatePassword(userId, newPassword) {
   const hashedPassword = await bcrypt.hash(newPassword, 10);
+
   const sql = `
     UPDATE users
-    SET 
+    SET
       password = ?,
+      refresh_token = NULL,
       forgot_password_token = NULL,
       forgot_password_expiry = NULL
     WHERE id = ?
   `;
+
   const [result] = await pool.query(sql, [hashedPassword, userId]);
   return result;
 }

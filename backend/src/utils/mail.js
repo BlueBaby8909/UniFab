@@ -1,5 +1,6 @@
 import Mailgen from "mailgen";
 import nodemailer from "nodemailer";
+import { ApiError } from "./api-error.js";
 
 const sendEmail = async (options) => {
   const mailGenerator = new Mailgen({
@@ -34,6 +35,7 @@ const sendEmail = async (options) => {
     await transporter.sendMail(mail);
   } catch (error) {
     console.error("Email service failed to send email:", error);
+    throw new ApiError(500, "Failed to send email");
   }
 };
 
