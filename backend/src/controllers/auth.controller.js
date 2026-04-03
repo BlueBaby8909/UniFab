@@ -99,6 +99,8 @@ const registerUser = asyncHandler(async (req, res) => {
     userType: createdUser.user_type,
     isAdmin: createdUser.is_admin,
     isEmailVerified: createdUser.is_email_verified,
+    createdAt: createdUser.created_at,
+    updatedAt: createdUser.updated_at,
   };
 
   return res
@@ -149,6 +151,8 @@ const loginUser = asyncHandler(async (req, res) => {
     userType: loggedInUser.user_type,
     isAdmin: loggedInUser.is_admin,
     isEmailVerified: loggedInUser.is_email_verified,
+    createdAt: loggedInUser.created_at,
+    updatedAt: loggedInUser.updated_at,
   };
 
   const options = {

@@ -45,12 +45,12 @@ const userRegisterValidator = () => {
       .matches(/[^A-Za-z0-9]/)
       .withMessage("Password must contain at least one special character"),
 
-    body("role")
+    body("userType")
       .trim()
       .notEmpty()
-      .withMessage("Role is required")
-      .isIn(["student", "faculty"])
-      .withMessage("Role must be student or faculty"),
+      .withMessage("User type is required")
+      .isIn(["student", "faculty", "researcher", "others"])
+      .withMessage("User type must be student, faculty, researcher, or others"),
   ];
 };
 
