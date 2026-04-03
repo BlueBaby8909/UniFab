@@ -50,7 +50,7 @@ const generateAccessAndRefreshTokens = async (userId) => {
 };
 
 const registerUser = asyncHandler(async (req, res) => {
-  const { firstName, lastName, email, password, role } = req.body;
+  const { firstName, lastName, email, password, userType } = req.body;
 
   const existedUser = await findUserByEmail(email);
 
@@ -58,7 +58,13 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(409, "User with email already exists", []);
   }
 
-  const result = await createUser(firstName, lastName, email, password, role);
+  const result = await createUser(
+    firstName,
+    lastName,
+    email,
+    password,
+    userType,
+  );
 
   const user = await findUserById(result.insertId);
 
@@ -90,12 +96,13 @@ const registerUser = asyncHandler(async (req, res) => {
     firstName: createdUser.first_name,
     lastName: createdUser.last_name,
     email: createdUser.email,
-    role: createdUser.role,
+    userType: createdUser.user_type,
+    isAdmin: createdUser.is_admin,
     isEmailVerified: createdUser.is_email_verified,
   };
 
   return res
-    .status(201)
+    .status(200)
     .json(
       new ApiResponse(
         200,
@@ -139,7 +146,8 @@ const loginUser = asyncHandler(async (req, res) => {
     firstName: loggedInUser.first_name,
     lastName: loggedInUser.last_name,
     email: loggedInUser.email,
-    role: loggedInUser.role,
+    userType: loggedInUser.user_type,
+    isAdmin: loggedInUser.is_admin,
     isEmailVerified: loggedInUser.is_email_verified,
   };
 

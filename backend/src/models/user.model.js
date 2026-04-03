@@ -3,14 +3,14 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
-async function createUser(firstName, lastName, email, password, role) {
+async function createUser(firstName, lastName, email, password, userType) {
   const sql = `
     INSERT INTO users (
       first_name,
       last_name,
       email,
       password,
-      role,
+      user_type,
       is_email_verified,
       refresh_token,
       forgot_password_token,
@@ -28,7 +28,7 @@ async function createUser(firstName, lastName, email, password, role) {
     lastName,
     email.trim().toLowerCase(),
     hashedPassword,
-    role,
+    userType,
     false,
     null,
     null,
@@ -77,7 +77,8 @@ function generateAccessToken(user) {
       email: user.email,
       firstName: user.first_name,
       lastName: user.last_name,
-      role: user.role,
+      userType: user.user_type,
+      isAdmin: Boolean(user.is_admin),
     },
     process.env.ACCESS_TOKEN_SECRET,
     { expiresIn: process.env.ACCESS_TOKEN_EXPIRATION },
