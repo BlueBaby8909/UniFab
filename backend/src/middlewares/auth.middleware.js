@@ -26,7 +26,7 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
       lastName: user.last_name,
       email: user.email,
       userType: user.user_type,
-      isAdmin: user.is_admin,
+      isAdmin: Boolean(user.is_admin),
       isEmailVerified: user.is_email_verified,
       createdAt: user.created_at,
       updatedAt: user.updated_at,

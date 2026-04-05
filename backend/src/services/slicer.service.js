@@ -1,0 +1,325 @@
+import { spawn } from "child_process";
+import fs from "fs";
+import path from "path";
+import { randomUUID } from "crypto";
+import { ApiError } from "../utils/api-error.js";
+
+const PRUSA_SLICER_EXECUTABLE =
+  process.env.PRUSA_SLICER_PATH ||
+  "C:\\Program Files\\Prusa3D\\PrusaSlicer\\prusa-slicer-console.exe";
+
+async function runSliceEstimate({
+  modelPath,
+  material,
+  quality,
+  infill,
+  quantity,
+}) {
+  if (!modelPath) {
+    throw new ApiError(400, "Model file path is required");
+  }
+
+  if (!fs.existsSync(modelPath)) {
+    throw new ApiError(400, "Model file does not exist");
+  }
+
+  const modelStats = fs.statSync(modelPath);
+  if (!modelStats.isFile()) {
+    throw new ApiError(400, "Model path must point to a file");
+  }
+
+  if (!material) {
+    throw new ApiError(400, "Material is required");
+  }
+
+  if (!quality) {
+    throw new ApiError(400, "Quality is required");
+  }
+
+  if (infill === undefined || infill === null || Number.isNaN(Number(infill))) {
+    throw new ApiError(400, "Infill must be a valid number");
+  }
+
+  const normalizedInfill = Number(infill);
+  if (normalizedInfill < 0 || normalizedInfill > 100) {
+    throw new ApiError(400, "Infill must be between 0 and 100");
+  }
+
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    throw new ApiError(
+      400,
+      "Quantity must be an integer greater than or equal to 1",
+    );
+  }
+
+  const outputGcodePath = createTempGcodePath();
+
+  try {
+    const resolvedProfile = resolveQuoteProfile(material, quality);
+
+    const commandArgs = buildPrusaSlicerArgs({
+      modelPath,
+      outputPath: outputGcodePath,
+      profile: resolvedProfile,
+      infill: normalizedInfill,
+      quantity,
+    });
+
+    await executePrusaSlicer({
+      executablePath: PRUSA_SLICER_EXECUTABLE,
+      args: commandArgs,
+    });
+
+    if (!fs.existsSync(outputGcodePath)) {
+      throw new ApiError(500, "Expected G-code output file was not generated");
+    }
+
+    const gcodeStats = fs.statSync(outputGcodePath);
+
+    if (!gcodeStats.isFile()) {
+      throw new ApiError(500, "G-code output path exists but is not a file");
+    }
+
+    if (gcodeStats.size === 0) {
+      throw new ApiError(500, "Generated G-code file is empty");
+    }
+
+    const gcodeText = readGeneratedGcode(outputGcodePath);
+
+    const {
+      estimatedPrintTimeMinutes,
+      filamentWeightGrams,
+      filamentLengthMeters,
+    } = parseGcodeSummary(gcodeText);
+
+    return {
+      estimatedPrintTimeMinutes,
+      filamentWeightGrams,
+      filamentLengthMeters,
+      profile: {
+        printer: resolvedProfile.printer,
+        nozzle: resolvedProfile.nozzle,
+        material: resolvedProfile.material,
+        quality: resolvedProfile.quality,
+        supportRule: resolvedProfile.supportRule,
+        orientationRule: resolvedProfile.orientationRule,
+      },
+    };
+  } finally {
+    await cleanupFile(outputGcodePath);
+  }
+}
+
+function resolveQuoteProfile(material, quality) {
+  const PROFILE_MAP = {
+    PLA: {
+      //220c 60c
+      draft: "ender3v3se-pla-draft.ini", //0.24mm
+      standard: "ender3v3se-pla-standard.ini", //0.20mmm
+      fine: "ender3v3se-pla-fine.ini", //0.16mm
+    },
+    PETG: {
+      //240c 75c
+      draft: "ender3v3se-petg-draft.ini", //0.24mm
+      standard: "ender3v3se-petg-standard.ini", //0.20mmm
+      fine: "ender3v3se-petg-fine.ini", //0.16mm
+    },
+  };
+
+  const fileName = PROFILE_MAP[material]?.[quality];
+
+  if (!fileName) {
+    throw new ApiError(
+      400,
+      `No slicing profile found for material=${material}, quality=${quality}`,
+    );
+  }
+
+  const configPath = path.resolve(
+    process.cwd(),
+    "src",
+    "config",
+    "slicer-profiles",
+    fileName,
+  );
+
+  if (!fs.existsSync(configPath)) {
+    throw new ApiError(500, `Slicing profile file not found: ${fileName}`);
+  }
+
+  return {
+    printer: "Creality Ender 3 V3 SE",
+    nozzle: "0.4mm",
+    material,
+    quality,
+    supportRule: "auto",
+    orientationRule: "original",
+    configPath,
+  };
+}
+
+function buildPrusaSlicerArgs({
+  modelPath,
+  outputPath,
+  profile,
+  infill,
+  quantity,
+}) {
+  // v1 policy: slice one copy only and let pricing multiply later.
+  // quantity is intentionally not passed to PrusaSlicer yet.
+  void quantity;
+
+  return [
+    "--load",
+    profile.configPath,
+    "--fill-density",
+    `${infill}%`,
+    "--export-gcode",
+    "--output",
+    outputPath,
+    modelPath,
+  ];
+}
+
+async function executePrusaSlicer({ executablePath, args }) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(executablePath, args, {
+      windowsHide: true,
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (data) => {
+      stdout += data.toString();
+    });
+
+    child.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    child.on("error", (error) => {
+      reject(
+        new ApiError(500, `Failed to start PrusaSlicer: ${error.message}`),
+      );
+    });
+
+    child.on("close", (code) => {
+      if (code !== 0) {
+        reject(
+          new ApiError(
+            422,
+            `PrusaSlicer failed with exit code ${code}: ${stderr.trim() || "Unknown slicing error"}`,
+          ),
+        );
+        return;
+      }
+
+      resolve({
+        code,
+        stdout,
+        stderr,
+      });
+    });
+  });
+}
+
+function parseGcodeSummary(gcodeText) {
+  const estimatedPrintTimeMatch = gcodeText.match(
+    /; estimated printing time \(normal mode\)\s*=\s*(.+)/,
+  );
+
+  const filamentWeightGramsMatch = gcodeText.match(
+    /; filament used \[g\]\s*=\s*([0-9.]+)/,
+  );
+
+  const filamentLengthMmMatch = gcodeText.match(
+    /; filament used \[mm\]\s*=\s*([0-9.]+)/,
+  );
+
+  if (!estimatedPrintTimeMatch) {
+    throw new ApiError(
+      500,
+      "Could not extract estimated print time from generated G-code",
+    );
+  }
+
+  if (!filamentWeightGramsMatch) {
+    throw new ApiError(
+      500,
+      "Could not extract filament weight from generated G-code",
+    );
+  }
+
+  if (!filamentLengthMmMatch) {
+    throw new ApiError(
+      500,
+      "Could not extract filament length from generated G-code",
+    );
+  }
+
+  const estimatedPrintTimeMinutes = convertPrintTimeToMinutes(
+    estimatedPrintTimeMatch[1].trim(),
+  );
+
+  const filamentWeightGrams = parseFloat(filamentWeightGramsMatch[1]);
+  const filamentLengthMeters = parseFloat(filamentLengthMmMatch[1]) / 1000;
+
+  return {
+    estimatedPrintTimeMinutes,
+    filamentWeightGrams,
+    filamentLengthMeters,
+  };
+}
+
+function convertPrintTimeToMinutes(timeText) {
+  const daysMatch = timeText.match(/([0-9]+)d/);
+  const hoursMatch = timeText.match(/([0-9]+)h/);
+  const minutesMatch = timeText.match(/([0-9]+)m/);
+  const secondsMatch = timeText.match(/([0-9]+)s/);
+
+  const days = daysMatch ? parseInt(daysMatch[1], 10) : 0;
+  const hours = hoursMatch ? parseInt(hoursMatch[1], 10) : 0;
+  const minutes = minutesMatch ? parseInt(minutesMatch[1], 10) : 0;
+  const seconds = secondsMatch ? parseInt(secondsMatch[1], 10) : 0;
+
+  return days * 24 * 60 + hours * 60 + minutes + seconds / 60;
+}
+
+async function cleanupFile(filePath) {
+  if (!filePath) {
+    return;
+  }
+
+  try {
+    await fs.promises.rm(filePath, { force: true });
+  } catch (error) {
+    console.error(
+      `Failed to delete temporary file ${filePath}: ${error.message}`,
+    );
+  }
+}
+
+function createTempGcodePath() {
+  const tempDir = path.resolve(process.cwd(), "temp");
+
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+
+  const fileName = `${randomUUID()}.gcode`;
+  return path.join(tempDir, fileName);
+}
+
+function readGeneratedGcode(filePath) {
+  try {
+    return fs.readFileSync(filePath, "utf-8");
+  } catch (error) {
+    throw new ApiError(
+      500,
+      `Failed to read generated G-code file: ${error.message}`,
+    );
+  }
+}
+
+export { runSliceEstimate };
