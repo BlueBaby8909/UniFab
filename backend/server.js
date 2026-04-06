@@ -6,6 +6,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 
 import authRoutes from "./src/routes/auth.routes.js";
+import quoteRoutes from "./src/routes/quote.routes.js";
 import healthCheckRoutes from "./src/routes/healthcheck.routes.js";
 
 const app = express();
@@ -22,6 +23,7 @@ app.use(
 
 // ─── Routes ───────────────────────────────────────────────────
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/quotes", quoteRoutes);
 app.use("/api/v1/healthcheck", healthCheckRoutes);
 
 // ─── Global Error Handler ─────────────────────────────────────

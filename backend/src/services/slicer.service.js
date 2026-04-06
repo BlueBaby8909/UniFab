@@ -1,8 +1,8 @@
 import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
-import { randomUUID } from "crypto";
 import { ApiError } from "../utils/api-error.js";
+import { createTempFilePath } from "../utils/temp-path.util.js";
 
 const PRUSA_SLICER_EXECUTABLE =
   process.env.PRUSA_SLICER_PATH ||
@@ -301,14 +301,7 @@ async function cleanupFile(filePath) {
 }
 
 function createTempGcodePath() {
-  const tempDir = path.resolve(process.cwd(), "temp");
-
-  if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir, { recursive: true });
-  }
-
-  const fileName = `${randomUUID()}.gcode`;
-  return path.join(tempDir, fileName);
+  return createTempFilePath(["gcode"], ".gcode");
 }
 
 function readGeneratedGcode(filePath) {

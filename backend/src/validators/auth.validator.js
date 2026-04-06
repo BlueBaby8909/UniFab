@@ -1,4 +1,4 @@
-import { body } from "express-validator";
+import { body, param } from "express-validator";
 
 const userRegisterValidator = () => {
   return [
@@ -6,6 +6,7 @@ const userRegisterValidator = () => {
       .trim()
       .notEmpty()
       .withMessage("First name is required")
+      .bail()
       .isLength({ min: 2, max: 50 })
       .withMessage("First name must be between 2 and 50 characters")
       .matches(/^[A-Za-z' -]+$/)
@@ -15,6 +16,7 @@ const userRegisterValidator = () => {
       .trim()
       .notEmpty()
       .withMessage("Last name is required")
+      .bail()
       .isLength({ min: 2, max: 50 })
       .withMessage("Last name must be between 2 and 50 characters")
       .matches(/^[A-Za-z' -]+$/)
@@ -24,16 +26,18 @@ const userRegisterValidator = () => {
       .trim()
       .notEmpty()
       .withMessage("Email is required")
+      .bail()
       .isLength({ max: 254 })
       .withMessage("Email is too long")
+      .bail()
       .isEmail()
       .withMessage("Email is not valid")
       .normalizeEmail(),
 
     body("password")
-      .trim()
       .notEmpty()
       .withMessage("Password is required")
+      .bail()
       .isLength({ min: 8, max: 128 })
       .withMessage("Password must be between 8 and 128 characters long")
       .matches(/[A-Z]/)
@@ -49,6 +53,7 @@ const userRegisterValidator = () => {
       .trim()
       .notEmpty()
       .withMessage("User type is required")
+      .bail()
       .isIn(["student", "faculty", "researcher", "others"])
       .withMessage("User type must be student, faculty, researcher, or others"),
   ];
@@ -60,25 +65,26 @@ const userLoginValidator = () => {
       .trim()
       .notEmpty()
       .withMessage("Email is required")
+      .bail()
+      .isLength({ max: 254 })
+      .withMessage("Email is too long")
+      .bail()
       .isEmail()
       .withMessage("Email is not valid")
       .normalizeEmail(),
 
-    body("password").trim().notEmpty().withMessage("Password is required"),
+    body("password").notEmpty().withMessage("Password is required"),
   ];
 };
 
 const userChangePasswordValidator = () => {
   return [
-    body("oldPassword")
-      .trim()
-      .notEmpty()
-      .withMessage("Old password is required"),
+    body("oldPassword").notEmpty().withMessage("Old password is required"),
 
     body("newPassword")
-      .trim()
       .notEmpty()
       .withMessage("New password is required")
+      .bail()
       .isLength({ min: 8, max: 128 })
       .withMessage("New password must be between 8 and 128 characters long")
       .matches(/[A-Z]/)
@@ -104,6 +110,10 @@ const userForgotPasswordValidator = () => {
       .trim()
       .notEmpty()
       .withMessage("Email is required")
+      .bail()
+      .isLength({ max: 254 })
+      .withMessage("Email is too long")
+      .bail()
       .isEmail()
       .withMessage("Email is not valid")
       .normalizeEmail(),
@@ -113,9 +123,9 @@ const userForgotPasswordValidator = () => {
 const userResetForgotPasswordValidator = () => {
   return [
     body("newPassword")
-      .trim()
       .notEmpty()
       .withMessage("New password is required")
+      .bail()
       .isLength({ min: 8, max: 128 })
       .withMessage("New password must be between 8 and 128 characters long")
       .matches(/[A-Z]/)
@@ -129,10 +139,43 @@ const userResetForgotPasswordValidator = () => {
   ];
 };
 
+const verifyEmailTokenValidator = () => {
+  return [
+    param("verificationToken")
+      .trim()
+      .notEmpty()
+      .withMessage("Verification token is required"),
+  ];
+};
+
+const resetForgotPasswordTokenValidator = () => {
+  return [
+    param("resetToken")
+      .trim()
+      .notEmpty()
+      .withMessage("Reset token is required"),
+  ];
+};
+
+const refreshAccessTokenValidator = () => {
+  return [
+    body("refreshToken")
+      .optional()
+      .isString()
+      .withMessage("Refresh token must be a string")
+      .bail()
+      .notEmpty()
+      .withMessage("Refresh token cannot be empty"),
+  ];
+};
+
 export {
   userRegisterValidator,
   userLoginValidator,
   userChangePasswordValidator,
   userForgotPasswordValidator,
   userResetForgotPasswordValidator,
+  verifyEmailTokenValidator,
+  resetForgotPasswordTokenValidator,
+  refreshAccessTokenValidator,
 };

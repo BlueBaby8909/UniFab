@@ -19,7 +19,10 @@ import {
   userChangePasswordValidator,
   userForgotPasswordValidator,
   userResetForgotPasswordValidator,
-} from "../validators/index.js";
+  verifyEmailTokenValidator,
+  resetForgotPasswordTokenValidator,
+  refreshAccessTokenValidator,
+} from "../validators/auth.validator.js";
 import rateLimit from "express-rate-limit";
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
@@ -32,14 +35,23 @@ router
 router
   .route("/login")
   .post(authLimiter, userLoginValidator(), validate, loginUser);
-router.route("/verify-email/:verificationToken").get(verifyEmail);
-router.route("/refresh-token").post(refreshAccessToken);
+router
+  .route("/verify-email/:verificationToken")
+  .get(verifyEmailTokenValidator(), validate, verifyEmail);
+router
+  .route("/refresh-token")
+  .post(refreshAccessTokenValidator(), validate, refreshAccessToken);
 router
   .route("/forgot-password")
   .post(userForgotPasswordValidator(), validate, forgotPasswordRequest);
 router
   .route("/reset-forgot-password/:resetToken")
-  .post(userResetForgotPasswordValidator(), validate, resetForgotPassword);
+  .post(
+    resetForgotPasswordTokenValidator(),
+    userResetForgotPasswordValidator(),
+    validate,
+    resetForgotPassword,
+  );
 
 //secured routes
 router.route("/logout").post(verifyJWT, logoutUser);
