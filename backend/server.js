@@ -3,6 +3,7 @@ dotenv.config();
 
 import express from "express";
 import cors from "cors";
+import multer from "multer";
 import cookieParser from "cookie-parser";
 
 import authRoutes from "./src/routes/auth.routes.js";
@@ -28,8 +29,33 @@ app.use("/api/v1/healthcheck", healthCheckRoutes);
 
 // ─── Global Error Handler ─────────────────────────────────────
 app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({
+        success: false,
+        message: "Uploaded file is too large",
+        errors: [],
+      });
+    }
+
+    if (err.code === "LIMIT_UNEXPECTED_FILE") {
+      return res.status(400).json({
+        success: false,
+        message: "Unexpected file field",
+        errors: [],
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: err.message || "File upload error",
+      errors: [],
+    });
+  }
+
   const statusCode = err.statusCode || 500;
-  res.status(statusCode).json({
+
+  return res.status(statusCode).json({
     success: false,
     message: err.message || "Internal Server Error",
     errors: err.errors || [],

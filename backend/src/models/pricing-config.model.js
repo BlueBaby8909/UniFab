@@ -1,4 +1,5 @@
 import pool from "../db/db.js";
+import { ApiError } from "../utils/api-error.js";
 
 async function getCurrentPricingConfig() {
   const sql = "SELECT * FROM pricing_config WHERE id = 1 LIMIT 1";
@@ -22,7 +23,7 @@ async function updatePricingConfig(payload) {
     WHERE id = 1
   `;
 
-  await pool.query(sql, [
+  const [result] = await pool.query(sql, [
     JSON.stringify(payload.material_cost_per_gram),
     payload.machine_hour_rate,
     payload.base_fee,
@@ -33,6 +34,10 @@ async function updatePricingConfig(payload) {
     payload.currency,
     payload.updated_by,
   ]);
+
+  if (result.affectedRows === 0) {
+    throw new ApiError(500, "Pricing config is not initialized");
+  }
 
   return getCurrentPricingConfig();
 }
