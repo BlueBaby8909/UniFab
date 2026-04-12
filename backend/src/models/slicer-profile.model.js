@@ -26,15 +26,4 @@ async function getActiveSlicerProfile(materialId, quality) {
   return rows[0] || null;
 }
 
-async function getCurrentVersion(materialId, quality) {
-  const sql = `
-    SELECT MAX(version_number) AS largest_value
-    FROM slicer_profiles
-    WHERE material_id = ? AND quality = ?
-  `;
-
-  const [rows] = await pool.query(sql, [materialId, quality]);
-  return rows[0]?.largest_value || 0;
-}
-
-export { getActiveSlicerProfile, getCurrentVersion };
+export { getActiveSlicerProfile };

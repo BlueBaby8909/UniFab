@@ -44,9 +44,9 @@ function normalizeDisplayName(displayName, fallbackValue) {
   return String(displayName).trim();
 }
 
-function parseOptionalNonNegativeNumber(value, fieldName) {
+function parseRequiredNonNegativeNumber(value, fieldName) {
   if (value === undefined || value === null || value === "") {
-    return null;
+    throw new ApiError(400, `${fieldName} is required`);
   }
 
   const parsedValue = Number(value);
@@ -145,7 +145,7 @@ async function registerMaterialProfile({
 
   const normalizedMaterialKey = normalizeMaterialKey(materialKey);
   const normalizedQuality = normalizeQuality(quality);
-  const parsedMaterialCostPerGram = parseOptionalNonNegativeNumber(
+  const parsedMaterialCostPerGram = parseRequiredNonNegativeNumber(
     materialCostPerGram,
     "Material cost per gram",
   );
@@ -195,13 +195,6 @@ async function registerMaterialProfile({
     let materialId;
 
     if (existingMaterialRows.length === 0) {
-      if (parsedMaterialCostPerGram === null) {
-        throw new ApiError(
-          400,
-          "Material cost per gram is required for a new material",
-        );
-      }
-
       const nextDisplayName = normalizeDisplayName(
         displayName,
         normalizedMaterialKey,
@@ -235,10 +228,7 @@ async function registerMaterialProfile({
         ? normalizeDisplayName(displayName, normalizedMaterialKey)
         : existingMaterial.display_name;
 
-      const nextMaterialCostPerGram =
-        parsedMaterialCostPerGram !== null
-          ? parsedMaterialCostPerGram
-          : Number(existingMaterial.material_cost_per_gram);
+      const nextMaterialCostPerGram = parsedMaterialCostPerGram;
 
       const nextIsActiveMaterial =
         parsedIsActiveMaterial !== undefined
