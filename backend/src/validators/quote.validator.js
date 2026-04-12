@@ -1,5 +1,7 @@
 import { body } from "express-validator";
 
+const ALLOWED_QUALITIES = ["draft", "standard", "fine"];
+
 const calculateQuoteValidator = () => {
   return [
     body("material")
@@ -21,7 +23,7 @@ const calculateQuoteValidator = () => {
       .isString()
       .withMessage("Quality must be a string")
       .bail()
-      .isIn(["draft", "standard", "fine"])
+      .isIn(ALLOWED_QUALITIES)
       .withMessage("Quality must be one of: draft, standard, fine"),
 
     body("infill")
@@ -97,4 +99,89 @@ const updateQuoteValidator = () => {
   ];
 };
 
-export { calculateQuoteValidator, updateQuoteValidator };
+const addMaterialValidator = () => {
+  return [
+    body("materialKey")
+      .trim()
+      .notEmpty()
+      .withMessage("Material key is required")
+      .bail()
+      .isString()
+      .withMessage("Material key must be a string")
+      .bail()
+      .isLength({ min: 1, max: 50 })
+      .withMessage("Material key must be between 1 and 50 characters"),
+
+    body("displayName")
+      .optional({ values: "falsy" })
+      .trim()
+      .isString()
+      .withMessage("Display name must be a string")
+      .bail()
+      .isLength({ min: 1, max: 100 })
+      .withMessage("Display name must be between 1 and 100 characters"),
+
+    body("materialCostPerGram")
+      .exists()
+      .withMessage("Material cost per gram is required")
+      .bail()
+      .isFloat({ min: 0 })
+      .withMessage("Material cost per gram must be a non-negative number"),
+
+    body("quality")
+      .trim()
+      .notEmpty()
+      .withMessage("Quality is required")
+      .bail()
+      .isString()
+      .withMessage("Quality must be a string")
+      .bail()
+      .isIn(ALLOWED_QUALITIES)
+      .withMessage("Quality must be one of: draft, standard, fine"),
+
+    body("printerName")
+      .optional({ values: "falsy" })
+      .trim()
+      .isString()
+      .withMessage("Printer name must be a string")
+      .bail()
+      .isLength({ min: 1, max: 100 })
+      .withMessage("Printer name must be between 1 and 100 characters"),
+
+    body("nozzle")
+      .optional({ values: "falsy" })
+      .trim()
+      .isString()
+      .withMessage("Nozzle must be a string")
+      .bail()
+      .isLength({ min: 1, max: 20 })
+      .withMessage("Nozzle must be between 1 and 20 characters"),
+
+    body("supportRule")
+      .optional({ values: "falsy" })
+      .trim()
+      .isString()
+      .withMessage("Support rule must be a string")
+      .bail()
+      .isLength({ min: 1, max: 30 })
+      .withMessage("Support rule must be between 1 and 30 characters"),
+
+    body("orientationRule")
+      .optional({ values: "falsy" })
+      .trim()
+      .isString()
+      .withMessage("Orientation rule must be a string")
+      .bail()
+      .isLength({ min: 1, max: 30 })
+      .withMessage("Orientation rule must be between 1 and 30 characters"),
+
+    body("isActiveMaterial")
+      .optional({ values: "falsy" })
+      .isIn(["true", "false", "1", "0", "yes", "no"])
+      .withMessage(
+        "isActiveMaterial must be one of: true, false, 1, 0, yes, no",
+      ),
+  ];
+};
+
+export { calculateQuoteValidator, updateQuoteValidator, addMaterialValidator };

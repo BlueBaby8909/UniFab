@@ -5,6 +5,7 @@ import { ApiError } from "../utils/api-error.js";
 import { createTempFilePath } from "../utils/temp-path.util.js";
 import { getActiveSlicerProfile } from "../models/slicer-profile.model.js";
 import { getMaterialByKey } from "../models/materials.model.js";
+import { getSlicerProfileFilePath } from "../utils/slicer-profile-path.util.js";
 
 const PRUSA_SLICER_EXECUTABLE =
   process.env.PRUSA_SLICER_PATH ||
@@ -140,13 +141,7 @@ async function resolveQuoteProfile(material, quality) {
     );
   }
 
-  const configPath = path.resolve(
-    process.cwd(),
-    "src",
-    "config",
-    "slicer-profiles",
-    fileName,
-  );
+  const configPath = getSlicerProfileFilePath(fileName);
 
   if (!fs.existsSync(configPath)) {
     throw new ApiError(500, `Slicing profile file not found: ${fileName}`);

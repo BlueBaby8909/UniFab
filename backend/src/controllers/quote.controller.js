@@ -9,6 +9,7 @@ import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { runSliceEstimate } from "../services/slicer.service.js";
 import { calculateQuoteEstimate } from "../utils/quote-calculator.util.js";
+import { registerMaterialProfile } from "../services/material-profile.service.js";
 
 const calculateQuote = asyncHandler(async (req, res) => {
   if (!req.file) {
@@ -101,12 +102,41 @@ const updatePricing = asyncHandler(async (req, res) => {
 
 const addMaterial = asyncHandler(async (req, res) => {
   if (!req.file) {
-    throw new ApiError(400, "Config File is Needed");
+    throw new ApiError(400, "Profile file is required");
   }
 
-  const configPath = req.file.path;
-  const { material, price, is_active } = req.body;
-  const normalizePrice = Number(price);
+  const tempFilePath = req.file.path;
+
+  try {
+    const result = await registerMaterialProfile({
+      materialKey: req.body.materialKey ?? req.body.material,
+      displayName: req.body.displayName,
+      materialCostPerGram: req.body.materialCostPerGram ?? req.body.price,
+      isActiveMaterial: req.body.isActiveMaterial ?? req.body.is_active,
+      quality: req.body.quality,
+      printerName: req.body.printerName,
+      nozzle: req.body.nozzle,
+      supportRule: req.body.supportRule,
+      orientationRule: req.body.orientationRule,
+      tempFilePath,
+      originalFileName: req.file.originalname,
+      uploadedBy: req.user.id,
+    });
+
+    return res
+      .status(201)
+      .json(
+        new ApiResponse(
+          201,
+          result,
+          "Material and slicer profile registered successfully",
+        ),
+      );
+  } finally {
+    if (tempFilePath && fs.existsSync(tempFilePath)) {
+      await fs.promises.rm(tempFilePath, { force: true });
+    }
+  }
 });
 
-export { calculateQuote, getPricingConfig, updatePricing };
+export { calculateQuote, getPricingConfig, updatePricing, addMaterial };

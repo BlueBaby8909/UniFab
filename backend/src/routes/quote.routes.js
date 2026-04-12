@@ -3,14 +3,17 @@ import {
   calculateQuote,
   getPricingConfig,
   updatePricing,
+  addMaterial,
 } from "../controllers/quote.controller.js";
 import { validate } from "../middlewares/validator.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { verifyAdmin } from "../middlewares/role.middleware.js";
 import { quoteUploadMiddleware } from "../middlewares/quote-upload.middleware.js";
+import { slicerProfileUploadMiddleware } from "../middlewares/slicer-profile-upload.middleware.js";
 import {
   calculateQuoteValidator,
   updateQuoteValidator,
+  addMaterialValidator,
 } from "../validators/quote.validator.js";
 import rateLimit from "express-rate-limit";
 
@@ -27,7 +30,7 @@ router
     calculateQuote,
   );
 
-//admin
+// admin
 router
   .route("/pricing-config")
   .get(authLimiter, verifyJWT, verifyAdmin, getPricingConfig);
@@ -41,6 +44,18 @@ router
     updateQuoteValidator(),
     validate,
     updatePricing,
+  );
+
+router
+  .route("/materials")
+  .post(
+    authLimiter,
+    verifyJWT,
+    verifyAdmin,
+    slicerProfileUploadMiddleware,
+    addMaterialValidator(),
+    validate,
+    addMaterial,
   );
 
 export default router;
