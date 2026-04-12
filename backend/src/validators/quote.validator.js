@@ -42,49 +42,6 @@ const calculateQuoteValidator = () => {
 
 const updateQuoteValidator = () => {
   return [
-    body("material_cost_per_gram")
-      .exists()
-      .withMessage("Material cost per gram is required")
-      .bail()
-      .isObject()
-      .withMessage("Material cost per gram must be an object")
-      .bail()
-      .custom((value) => {
-        const entries = Object.entries(value);
-
-        if (entries.length === 0) {
-          throw new Error(
-            "Material cost per gram must contain at least one material",
-          );
-        }
-
-        for (const [materialName, materialCost] of entries) {
-          if (
-            typeof materialName !== "string" ||
-            materialName.trim().length === 0
-          ) {
-            throw new Error("Material names must be non-empty strings");
-          }
-
-          if (materialName.length > 50) {
-            throw new Error("Material names must not exceed 50 characters");
-          }
-
-          if (
-            materialCost === null ||
-            materialCost === undefined ||
-            Number.isNaN(Number(materialCost)) ||
-            Number(materialCost) < 0
-          ) {
-            throw new Error(
-              `Material cost per gram for "${materialName}" must be a non-negative number`,
-            );
-          }
-        }
-
-        return true;
-      }),
-
     body("machine_hour_rate")
       .exists()
       .withMessage("Machine hour rate is required")

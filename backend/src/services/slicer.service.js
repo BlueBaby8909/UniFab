@@ -3,6 +3,8 @@ import fs from "fs";
 import path from "path";
 import { ApiError } from "../utils/api-error.js";
 import { createTempFilePath } from "../utils/temp-path.util.js";
+import { getActiveSlicerProfile } from "../models/slicer-profile.model.js";
+import { getMaterialByKey } from "../models/materials.model.js";
 
 const PRUSA_SLICER_EXECUTABLE =
   process.env.PRUSA_SLICER_PATH ||
@@ -55,7 +57,7 @@ async function runSliceEstimate({
   const outputGcodePath = createTempGcodePath();
 
   try {
-    const resolvedProfile = resolveQuoteProfile(material, quality);
+    const resolvedProfile = await resolveQuoteProfile(material, quality);
 
     const commandArgs = buildPrusaSlicerArgs({
       modelPath,
@@ -110,28 +112,31 @@ async function runSliceEstimate({
   }
 }
 
-function resolveQuoteProfile(material, quality) {
-  const PROFILE_MAP = {
-    PLA: {
-      //220c 60c
-      draft: "ender3v3se-pla-draft.ini", //0.24mm
-      standard: "ender3v3se-pla-standard.ini", //0.20mmm
-      fine: "ender3v3se-pla-fine.ini", //0.16mm
-    },
-    PETG: {
-      //240c 75c
-      draft: "ender3v3se-petg-draft.ini", //0.24mm
-      standard: "ender3v3se-petg-standard.ini", //0.20mmm
-      fine: "ender3v3se-petg-fine.ini", //0.16mm
-    },
-  };
+async function resolveQuoteProfile(material, quality) {
+  const materialRow = await getMaterialByKey(material);
 
-  const fileName = PROFILE_MAP[material]?.[quality];
+  if (!materialRow) {
+    throw new ApiError(
+      400,
+      `Material is not configured or inactive: ${material}`,
+    );
+  }
+
+  const slicerProfile = await getActiveSlicerProfile(materialRow.id, quality);
+
+  if (!slicerProfile) {
+    throw new ApiError(
+      400,
+      `No active slicing profile found for material=${material}, quality=${quality}`,
+    );
+  }
+
+  const fileName = slicerProfile.profile_filename;
 
   if (!fileName) {
     throw new ApiError(
-      400,
-      `No slicing profile found for material=${material}, quality=${quality}`,
+      500,
+      `Active slicing profile is missing a profile filename for material=${material}, quality=${quality}`,
     );
   }
 
@@ -148,12 +153,12 @@ function resolveQuoteProfile(material, quality) {
   }
 
   return {
-    printer: "Creality Ender 3 V3 SE",
-    nozzle: "0.4mm",
-    material,
-    quality,
-    supportRule: "auto",
-    orientationRule: "original",
+    printer: slicerProfile.printer_name,
+    nozzle: slicerProfile.nozzle,
+    material: materialRow.material_key,
+    quality: slicerProfile.quality,
+    supportRule: slicerProfile.support_rule,
+    orientationRule: slicerProfile.orientation_rule,
     configPath,
   };
 }

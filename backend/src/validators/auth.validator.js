@@ -31,8 +31,7 @@ const userRegisterValidator = () => {
       .withMessage("Email is too long")
       .bail()
       .isEmail()
-      .withMessage("Email is not valid")
-      .normalizeEmail(),
+      .withMessage("Email is not valid"),
 
     body("password")
       .notEmpty()
@@ -70,8 +69,7 @@ const userLoginValidator = () => {
       .withMessage("Email is too long")
       .bail()
       .isEmail()
-      .withMessage("Email is not valid")
-      .normalizeEmail(),
+      .withMessage("Email is not valid"),
 
     body("password").notEmpty().withMessage("Password is required"),
   ];
@@ -115,8 +113,7 @@ const userForgotPasswordValidator = () => {
       .withMessage("Email is too long")
       .bail()
       .isEmail()
-      .withMessage("Email is not valid")
-      .normalizeEmail(),
+      .withMessage("Email is not valid"),
   ];
 };
 

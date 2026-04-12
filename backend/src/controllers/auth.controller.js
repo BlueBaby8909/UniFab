@@ -324,8 +324,8 @@ const forgotPasswordRequest = asyncHandler(async (req, res) => {
       .json(
         new ApiResponse(
           200,
-          {},
-          "If any account is associated with the email, a password reset email has been sent",
+          { email },
+          "Password reset email sent successfully, please check your email",
         ),
       );
   }
@@ -348,7 +348,7 @@ const forgotPasswordRequest = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        {},
+        { email },
         "Password reset email sent successfully, please check your email",
       ),
     );

@@ -4,30 +4,12 @@ function roundMoney(value) {
   return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 }
 
-function normalizeMaterialCostPerGram(materialCostPerGram) {
-  if (!materialCostPerGram) {
-    throw new ApiError(
-      500,
-      "material_cost_per_gram is missing in pricing config",
-    );
-  }
-
-  if (typeof materialCostPerGram === "string") {
-    try {
-      return JSON.parse(materialCostPerGram);
-    } catch {
-      throw new ApiError(500, "material_cost_per_gram is not valid JSON");
-    }
-  }
-
-  if (typeof materialCostPerGram === "object") {
-    return materialCostPerGram;
-  }
-
-  throw new ApiError(500, "material_cost_per_gram has an invalid format");
-}
-
-function calculateQuoteEstimate({ slicerResult, pricingConfig, quantity }) {
+function calculateQuoteEstimate({
+  slicerResult,
+  pricingConfig,
+  materialCostPerGram,
+  quantity,
+}) {
   if (!slicerResult) {
     throw new ApiError(400, "Slicer result is required");
   }
@@ -43,6 +25,18 @@ function calculateQuoteEstimate({ slicerResult, pricingConfig, quantity }) {
     );
   }
 
+  const normalizedMaterialCostPerGram = Number(materialCostPerGram);
+
+  if (
+    Number.isNaN(normalizedMaterialCostPerGram) ||
+    normalizedMaterialCostPerGram < 0
+  ) {
+    throw new ApiError(
+      500,
+      "Material cost per gram must be a valid non-negative number",
+    );
+  }
+
   const {
     estimatedPrintTimeMinutes,
     filamentWeightGrams,
@@ -52,20 +46,6 @@ function calculateQuoteEstimate({ slicerResult, pricingConfig, quantity }) {
 
   if (!profile?.material) {
     throw new ApiError(500, "Slicer result profile material is required");
-  }
-
-  const materialCostMap = normalizeMaterialCostPerGram(
-    pricingConfig.material_cost_per_gram,
-  );
-
-  const material = profile.material;
-  const materialCostPerGram = Number(materialCostMap[material]);
-
-  if (Number.isNaN(materialCostPerGram)) {
-    throw new ApiError(
-      500,
-      `Material cost per gram is not configured for material: ${material}`,
-    );
   }
 
   const printHours = Number(estimatedPrintTimeMinutes) / 60;
@@ -79,7 +59,8 @@ function calculateQuoteEstimate({ slicerResult, pricingConfig, quantity }) {
   const powerConsumptionWatts =
     Number(pricingConfig.power_consumption_watts) || 0;
 
-  const materialCost = filamentWeightGrams * materialCostPerGram;
+  const materialCost =
+    Number(filamentWeightGrams) * normalizedMaterialCostPerGram;
   const machineCost = printHours * machineHourRate;
   const electricityCost =
     printHours * (powerConsumptionWatts / 1000) * electricityCostPerKwh;
