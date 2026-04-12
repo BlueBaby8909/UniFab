@@ -1,11 +1,10 @@
 import { spawn } from "child_process";
 import fs from "fs";
-import path from "path";
 import { ApiError } from "../utils/api-error.js";
 import { createTempFilePath } from "../utils/temp-path.util.js";
+import { getSlicerProfileFilePath } from "../utils/slicer-profile-path.util.js";
 import { getActiveSlicerProfile } from "../models/slicer-profile.model.js";
 import { getMaterialByKey } from "../models/materials.model.js";
-import { getSlicerProfileFilePath } from "../utils/slicer-profile-path.util.js";
 
 const PRUSA_SLICER_EXECUTABLE =
   process.env.PRUSA_SLICER_PATH ||
@@ -165,8 +164,6 @@ function buildPrusaSlicerArgs({
   infill,
   quantity,
 }) {
-  // v1 policy: slice one copy only and let pricing multiply later.
-  // quantity is intentionally not passed to PrusaSlicer yet.
   void quantity;
 
   return [
