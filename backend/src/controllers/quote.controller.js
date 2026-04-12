@@ -109,10 +109,10 @@ const addMaterial = asyncHandler(async (req, res) => {
 
   try {
     const result = await registerMaterialProfile({
-      materialKey: req.body.materialKey ?? req.body.material,
+      materialKey: req.body.materialKey,
       displayName: req.body.displayName,
-      materialCostPerGram: req.body.materialCostPerGram ?? req.body.price,
-      isActiveMaterial: req.body.isActiveMaterial ?? req.body.is_active,
+      materialCostPerGram: req.body.materialCostPerGram,
+      isActiveMaterial: req.body.isActiveMaterial,
       quality: req.body.quality,
       printerName: req.body.printerName,
       nozzle: req.body.nozzle,

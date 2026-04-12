@@ -3,22 +3,15 @@ import path from "path";
 import { randomUUID } from "crypto";
 import pool from "../db/db.js";
 import { ApiError } from "../utils/api-error.js";
-
-const PROFILE_STORAGE_DIR = path.resolve(
-  process.cwd(),
-  "storage",
-  "slicer-profiles",
-  "library",
-);
+import {
+  ensureSlicerProfileStorageDir,
+  getSlicerProfileFilePath,
+} from "../utils/slicer-profile-path.util.js";
 
 const ALLOWED_QUALITIES = new Set(["draft", "standard", "fine"]);
 
 function hasText(value) {
   return value !== undefined && value !== null && String(value).trim() !== "";
-}
-
-function ensureProfileStorageDir() {
-  fs.mkdirSync(PROFILE_STORAGE_DIR, { recursive: true });
 }
 
 function normalizeMaterialKey(materialKey) {
@@ -148,7 +141,7 @@ async function registerMaterialProfile({
     throw new ApiError(401, "Valid uploadedBy user id is required");
   }
 
-  ensureProfileStorageDir();
+  ensureSlicerProfileStorageDir();
 
   const normalizedMaterialKey = normalizeMaterialKey(materialKey);
   const normalizedQuality = normalizeQuality(quality);
@@ -311,7 +304,7 @@ async function registerMaterialProfile({
       originalFileName,
     });
 
-    finalFilePath = path.join(PROFILE_STORAGE_DIR, finalFileName);
+    finalFilePath = getSlicerProfileFilePath(finalFileName);
 
     await fs.promises.rename(tempFilePath, finalFilePath);
 
@@ -399,4 +392,4 @@ async function registerMaterialProfile({
   }
 }
 
-export { registerMaterialProfile, PROFILE_STORAGE_DIR };
+export { registerMaterialProfile };

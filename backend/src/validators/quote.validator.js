@@ -122,9 +122,7 @@ const addMaterialValidator = () => {
       .withMessage("Display name must be between 1 and 100 characters"),
 
     body("materialCostPerGram")
-      .exists()
-      .withMessage("Material cost per gram is required")
-      .bail()
+      .optional({ values: "falsy" })
       .isFloat({ min: 0 })
       .withMessage("Material cost per gram must be a non-negative number"),
 
