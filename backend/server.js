@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import path from "path";
 import express from "express";
 import cors from "cors";
 import multer from "multer";
@@ -11,6 +12,8 @@ import quoteRoutes from "./src/routes/quote.routes.js";
 import pricingConfigRoutes from "./src/routes/pricing-config.routes.js";
 import materialsRoutes from "./src/routes/materials.routes.js";
 import healthCheckRoutes from "./src/routes/healthcheck.routes.js";
+import designsRoutes from "./src/routes/designs.routes.js";
+import { ApiError } from "./src/utils/api-error.js";
 
 const app = express();
 
@@ -24,12 +27,31 @@ app.use(
   }),
 );
 
+app.use(
+  "/storage/local-designs",
+  express.static(path.resolve(process.cwd(), "storage", "local-designs"), {
+    fallthrough: false,
+    index: false,
+    etag: true,
+    immutable: true,
+    maxAge: "7d",
+    setHeaders(res) {
+      res.setHeader("X-Content-Type-Options", "nosniff");
+    },
+  }),
+);
+
 // ─── Routes ───────────────────────────────────────────────────
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/quotes", quoteRoutes);
 app.use("/api/v1/pricing-config", pricingConfigRoutes);
 app.use("/api/v1/materials", materialsRoutes);
+app.use("/api/v1/designs", designsRoutes);
 app.use("/api/v1/healthcheck", healthCheckRoutes);
+
+app.use("/api", (req, res, next) => {
+  next(new ApiError(404, "API route not found"));
+});
 
 // ─── Global Error Handler ─────────────────────────────────────
 app.use((err, req, res, next) => {
@@ -57,7 +79,7 @@ app.use((err, req, res, next) => {
     });
   }
 
-  const statusCode = err.statusCode || 500;
+  const statusCode = err.statusCode || err.status || 500;
 
   return res.status(statusCode).json({
     success: false,
