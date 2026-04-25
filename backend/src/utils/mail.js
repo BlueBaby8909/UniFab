@@ -77,8 +77,47 @@ const forgotPasswordMailgenContent = (username, passwordResetLink) => {
   };
 };
 
+const printRequestStatusMailgenContent = ({
+  username,
+  referenceNumber,
+  statusLabel,
+  note,
+}) => {
+  return {
+    body: {
+      name: username,
+      intro: `Your UniFab print request ${referenceNumber} has been updated.`,
+      table: {
+        data: [
+          {
+            item: "Current Status",
+            description: statusLabel,
+          },
+          ...(note
+            ? [
+                {
+                  item: "Note",
+                  description: note,
+                },
+              ]
+            : []),
+        ],
+        columns: {
+          customWidth: {
+            item: "30%",
+            description: "70%",
+          },
+        },
+      },
+      outro:
+        "You can log in to your UniFab account to view the full request details and status history.",
+    },
+  };
+};
+
 export {
   emailVerificationMailgenContent,
   forgotPasswordMailgenContent,
+  printRequestStatusMailgenContent,
   sendEmail,
 };
