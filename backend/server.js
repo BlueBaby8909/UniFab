@@ -13,6 +13,7 @@ import pricingConfigRoutes from "./src/routes/pricing-config.routes.js";
 import materialsRoutes from "./src/routes/materials.routes.js";
 import healthCheckRoutes from "./src/routes/healthcheck.routes.js";
 import designsRoutes from "./src/routes/designs.routes.js";
+import designRequestRoutes from "./src/routes/design-requests.routes.js";
 import { ApiError } from "./src/utils/api-error.js";
 
 const app = express();
@@ -47,6 +48,7 @@ app.use("/api/v1/quotes", quoteRoutes);
 app.use("/api/v1/pricing-config", pricingConfigRoutes);
 app.use("/api/v1/materials", materialsRoutes);
 app.use("/api/v1/designs", designsRoutes);
+app.use("/api/v1/design-requests", designRequestRoutes);
 app.use("/api/v1/healthcheck", healthCheckRoutes);
 
 app.use("/api", (req, res, next) => {
