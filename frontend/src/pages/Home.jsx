@@ -1,218 +1,200 @@
-import {Link, NavLink} from "react-router-dom";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 
 export default function Home() {
-    return (
-        <main className="bg-white">
-            <section id="hero" className="hero-section relative overflow-hidden pt-20 pb-24 md:pt-28 md:pb-32">
-                <div className="hero-bg-grid absolute inset-0 -z-10"></div>
-                <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-100 rounded-full blur-3xl opacity-50 -z-10"></div>
-                <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-indigo-100 rounded-full blur-3xl opacity-40 -z-10"></div>
+  const [activeTab, setActiveTab] = useState("3d-printing");
 
-                <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
-                    <div className="hero-text">
-                        <div className="eyebrow inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-6 tracking-widest uppercase">
-                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
-                            USTP–CDO Fabrication Laboratory
-                        </div>
+  return (
+    <main className="bg-white text-black font-sans selection:bg-gdg-yellow selection:text-black min-h-screen overflow-x-hidden">
+      {/* Background Dot Grid Layer */}
+      <div className="fixed inset-0 gdg-dot-grid -z-20"></div>
 
-                        <h1 className="hero-heading text-5xl md:text-6xl font-extrabold text-gray-900 mb-6 leading-none tracking-tight">
-                            Professional<br />
-                            <span className="text-blue-600">3D Printing</span><br />
-                            &amp; Prototyping
-                        </h1>
-                    
-                        <p className="text-lg text-gray-500 mb-10 leading-relaxed max-w-md font-light">
-                            Streamlined fabrication for USTP students and researchers. Upload your design, get an instant quote, and track your order in real time.
-                        </p>
+      {/* Hero Section */}
+      <section className="relative pt-8 pb-16 md:pt-16 md:pb-24">
+        
+        {/* Decorative Floating Stickers (Background) - Scaled down */}
+        <div className="hidden xl:block absolute top-[15%] left-[2%] transform -rotate-12 opacity-30 -z-10">
+          <div className="sticker-card bg-gdg-red px-4 py-1.5 font-black text-white uppercase italic text-xs">FASTER</div>
+        </div>
+        <div className="hidden xl:block absolute bottom-[25%] left-[10%] transform rotate-6 opacity-30 -z-10">
+          <div className="sticker-card bg-gdg-green px-4 py-1.5 font-black text-white uppercase italic text-xs">PRECISE</div>
+        </div>
 
-                        <div className="hero-cta-group flex flex-wrap gap-4">
-                            <Link to="#quote" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 px-8 rounded-xl shadow-lg shadow-blue-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-200 text-sm">
-                                Get Instant Quote
-                            </Link>
-                            <Link to="/database" className="bg-white hover:bg-gray-50 text-gray-800 border border-gray-200 font-semibold py-3.5 px-8 rounded-xl shadow-sm transition-all duration-200 hover:-translate-y-0.5 text-sm">
-                                Browse Designs →
-                            </Link>
-                        </div>
-
-                        <div className="trust-row flex items-center gap-6 mt-10 pt-10 border-t border-gray-100">
-                            <div className="text-center">
-                                <p className="text-2xl font-bold text-gray-900 leading-none">24h</p>
-                                <p className="text-xs text-gray-400 mt-1">Turnaround</p>
-                            </div>
-                            <div className="w-px h-10 bg-gray-200"></div>
-                            <div className="text-center">
-                                <p className="text-2xl font-bold text-gray-900 leading-none">500+</p>
-                                <p className="text-xs text-gray-400 mt-1">Designs</p>
-                            </div>
-                            <div className="w-px h-10 bg-gray-200"></div>
-                            <div className="text-center">
-                                <p className="text-2xl font-bold text-gray-900 leading-none">PLA/ABS</p>
-                                <p className="text-xs text-gray-400 mt-1">Materials</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="quote" className="quote-widget bg-white rounded-2xl shadow-2xl shadow-gray-200/70 p-8 border border-gray-100 relative">
-                        <div className="absolute top-0 left-8 right-8 h-0.5 bg-gradient -to-r from-blue-500 to-indigo-500 rounded-full -translate-y-0.5"></div>
-
-                        <div className="widget-header flex items-center justify-between mb-7">
-                            <h2 className="text-xl font-bold text-gray-900 tracking-tight">Instant Quote</h2>
-                            <span className="badge bg-emerald-50 text-emerald-700 border border-emerald-100 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                                Online 24/7
-                            </span>
-                        </div>
-
-                        <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
-                            <div className="upload-area bg-blue-50/60 border-2 border-dashed border-blue-200 rounded-xl p-5 hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200 group">
-                                <label htmlFor="stl-file" className="block text-sm text-gray-700 font-semibold mb-2">Upload 3D Files</label>
-                                <input type="file" id="stl-file" name="file" accept=".stl, .obj, .step" required className="w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white file:text-xs file:font-semibold file:cursor-pointer hover:file:bg-blue-700 file:transition-colors"/>
-                                <small className="block text-gray-400 text-xs mt-2">Accepted formats: STL, OBJ, STEP</small>
-                            </div>
-
-                            <div className="quick-specs-grid grid grid-cols-2 gap-4">
-                                <div className="spec-group">
-                                    <label htmlFor="material" className="block text-xs text-gray-500 font-semibold mb-1.5 uppercase tracking-wider">Material</label>
-                                    <select id="material" name="material" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 bg-white text-sm text-gray-800 transition-colors">
-                                        <option value="pla">PLA (Standard)</option>
-                                        <option value="abs">ABS (Durable)</option>
-                                        <option value="petg">PETG (Flexible)</option>
-                                    </select>
-                                </div>
-
-                                <div className="spec-group">
-                                    <label htmlFor="quality" className="block text-xs text-gray-500 font-semibold mb-1.5 uppercase tracking-wider">Quality</label>
-                                    <select id="quality" name="quality" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 bg-white text-sm text-gray-800 transition-colors">
-                                        <option value="0.2">Standard (0.2mm)</option>
-                                        <option value="0.1">High Detail (0.1mm)</option>
-                                        <option value="0.3">Draft (0.3mm)</option>
-                                    </select>
-                                </div>
-
-                                <div className="spec-group">
-                                    <label htmlFor="infill" className="block text-xs text-gray-500 font-semibold mb-1.5 uppercase tracking-wider">Infill</label>
-                                    <select id="infill" name="infill" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 bg-white text-sm text-gray-800 transition-colors">
-                                        <option value="20">20% Standard</option>
-                                        <option value="100">100% Solid</option>
-                                        <option value="10">10% Hollow</option>
-                                    </select>
-                                </div>
-
-                                <div className="spec-group">
-                                    <label htmlFor="quantity" className="block text-xs text-gray-500 font-semibold mb-1.5 uppercase tracking-wider">Quantity</label>
-                                    <input type="number" id="quantity" name="quantity" defaultValue="1" min="1" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 text-sm text-gray-800 transition-colors"/>
-                                </div>
-                            </div>
-
-                            <div className="widget-footer pt-1">
-                                <button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 transition-all duration-200 font-semibold py-3.5 px-6 rounded-xl shadow-md shadow-blue-200 text-sm hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-200">
-                                    Calculate Estimate →
-                                </button>
-                                <p className="text-center text-xs text-gray-400 mt-3">No account needed · Instant results</p>
-                            </div>
-                        </form>
-                    </div>
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid lg:grid-cols-12 gap-8 xl:gap-12 items-center">
+            
+            {/* Left Side: Scaled down typography to prevent overlap */}
+            <div className="lg:col-span-7 space-y-6 md:space-y-8">
+              <div className="die-cut inline-block">
+                <div className="bg-black text-white px-3 py-1 rounded-md font-black text-[9px] uppercase tracking-[0.2em] flex items-center gap-2">
+                  <span className="w-2 h-2 bg-gdg-green rounded-full border-2 border-white animate-pulse"></span>
+                  USTP CDO FABRICATION LABORATORY
                 </div>
-            </section>
+              </div>
 
-            <section id="capabilities" className="stats-banner bg-gray-900 py-14">
-                <div className="max-w-7xl mx-auto px-6">
-                    <div className="grid md:grid-cols-3 gap-0 divide-y md:divide-y-0 md:divide-x divide-gray-700/60 text-center">
-                        <div className="stat-item py-6 md:py-0 md:px-12">
-                            <span className="stat-number block text-5xl font-extrabold text-white mb-2 tracking-tight">24h</span>
-                            <span className="stat-label text-sm text-gray-400 font-medium tracking-wide uppercase">Avg. Turnaround Time</span>
-                        </div>
-                        <div className="stat-item py-6 md:py-0 md:px-12">
-                            <span className="stat-number block text-5xl font-extrabold text-white mb-2 tracking-tight">500+</span>
-                            <span className="stat-label text-sm text-gray-400 font-medium tracking-wide uppercase">Approved Designs</span>
-                        </div>
-                        <div className="stat-item py-6 md:py-0 md:px-12">
-                            <span className="stat-number block text-5xl font-extrabold text-white mb-2 tracking-tight">100%</span>
-                            <span className="stat-label text-sm text-gray-400 font-medium tracking-wide uppercase">Automated Design Check</span>
-                        </div>
-                    </div>
+              <div className="relative">
+                <h1 className="text-4xl md:text-5xl xl:text-6xl font-black leading-[0.95] uppercase tracking-tighter italic">
+                  Your Ideas, <br />
+                  <span className="relative inline-block mt-3 lg:mt-4">
+                    <span className="absolute -inset-1.5 bg-white border-[2px] border-black -z-10 transform rotate-1"></span>
+                    <span className="text-gdg-blue bg-gdg-blue-pastel border-[3px] border-black px-4 py-1.5 inline-block transform -rotate-2">
+                      Manufactured.
+                    </span>
+                  </span>
+                </h1>
+              </div>
+
+              <div className="max-w-md">
+                <p className="text-lg font-bold text-black/80 leading-snug">
+                  High-precision 3D printing & design help. <br/>
+                  <span className="bg-gdg-yellow px-2.5 py-0.5 border-[2px] border-black inline-block mt-2 transform rotate-1">
+                    Made on campus. Made for you.
+                  </span>
+                </p>
+              </div>
+
+              {/* Grid-based Stats Block - Scaled down */}
+              <div className="grid grid-cols-3 gap-3 pt-8 border-t-[2px] border-black/10 max-w-sm">
+                {[
+                  { val: "24H", label: "Lead Time", color: "bg-gdg-blue-pastel" },
+                  { val: "500+", label: "Projects", color: "bg-gdg-red-pastel" },
+                  { val: "99%", label: "Success", color: "bg-gdg-green-pastel" },
+                ].map((stat, i) => (
+                  <div key={i} className={`sticker-card ${stat.color} p-3 text-center transform ${i % 2 === 0 ? '-rotate-1' : 'rotate-1'}`}>
+                    <p className="text-2xl font-black text-black leading-none">{stat.val}</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest mt-1.5">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Side: The Order Sticker - More compact size */}
+            <div className="lg:col-span-5 relative mt-12 lg:mt-0">
+              <div className="sticker-card overflow-hidden max-w-[420px] mx-auto lg:ml-auto">
+                <div className="flex bg-black p-1 gap-1">
+                  {["3d-printing", "design-help"].map((tab) => (
+                    <button 
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`flex-1 py-2.5 text-[9px] font-black uppercase tracking-[0.2em] rounded-lg transition-all ${
+                        activeTab === tab 
+                        ? "bg-white text-black" 
+                        : "text-white hover:bg-white/10"
+                      }`}
+                    >
+                      {tab.replace("-", " ")}
+                    </button>
+                  ))}
                 </div>
-            </section>
 
-            <section id="services-grid" className="py-24 bg-white">
-                <div className="max-w-7xl mx-auto px-6">
-                    <div className="section-header text-center mb-16 max-w-xl mx-auto">
-                        <p className="text-xs font-bold text-blue-600 tracking-widest uppercase mb-3">What We Offer</p>
-                        <h2 className="text-4xl font-extrabold text-gray-900 mb-4 tracking-tight">Our Services</h2>
-                        <p className="text-gray-500 leading-relaxed">Comprehensive fabrication solutions for every stage of your project — from concept to completed part.</p>
-                    </div>
+                <div className="p-6 space-y-5">
+                  {activeTab === "3d-printing" ? (
+                    <form className="space-y-5">
+                      <div>
+                        <label className="input-label">1. Upload Design File</label>
+                        <div className="relative group cursor-pointer">
+                          <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                          <div className="border-[2px] border-dashed border-black bg-slate-50 group-hover:bg-gdg-blue-pastel/20 transition-all rounded-xl p-6 text-center">
+                            <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📁</div>
+                            <p className="text-xs font-black uppercase tracking-tighter italic">Click to browse designs</p>
+                          </div>
+                        </div>
+                      </div>
 
-                    <div className="card-grid grid md:grid-cols-3 gap-6">
-                        
-                        <article className="service-card group bg-white border border-gray-200 rounded-2xl p-8 hover:shadow-xl hover:shadow-gray-100 hover:border-blue-200 transition-all duration-300 hover:-translate-y-1">
-                            <div className="card-icon w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-6 text-blue-600 text-xl group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
-                                ⬡
-                            </div>
-                            <h3 className="text-lg font-bold text-gray-900 mb-3 tracking-tight">3D Printing Service</h3>
-                            <p className="text-gray-500 mb-6 leading-relaxed text-sm">Upload your STL files and get professional prints with our automated slicing and quality-checked post-processing.</p>
-                            <NavLink to="/upload" className="text-blue-600 font-semibold hover:text-blue-700 transition-colors text-sm inline-flex items-center gap-1">Start Printing <span>→</span></NavLink>
-                        </article>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="input-label">Technology</label>
+                          <select className="industrial-input text-xs py-2 px-3 appearance-none">
+                            <option>FDM (Plastic)</option>
+                            <option>SLA (Resin)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="input-label">Material</label>
+                          <select className="industrial-input text-xs py-2 px-3 appearance-none">
+                            <option>PLA (Standard)</option>
+                            <option>ABS (Industrial)</option>
+                          </select>
+                        </div>
+                      </div>
 
-                        <article className="service-card group bg-white border border-gray-200 rounded-2xl p-8 hover:shadow-xl hover:shadow-gray-100 hover:border-blue-200 transition-all duration-300 hover:-translate-y-1">
-                            <div className="card-icon w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mb-6 text-indigo-600 text-xl group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
-                                ◈
-                            </div>
-                            <h3 className="text-lg font-bold text-gray-900 mb-3 tracking-tight">Design Database</h3>
-                            <p className="text-gray-500 mb-6 leading-relaxed text-sm">Don't have a design? Browse our curated library of verified, printable 3D models sourced and approved for the lab.</p>
-                            <Link to="/database" className="text-blue-600 font-semibold hover:text-blue-700 transition-colors text-sm inline-flex items-center gap-1">Browse Library <span>→</span></Link>
-                        </article>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="input-label">Quantity</label>
+                          <input type="number" min="1" defaultValue="1" className="industrial-input text-xs py-2 px-3" />
+                        </div>
+                        <div>
+                          <label className="input-label">Infill</label>
+                          <select className="industrial-input text-xs py-2 px-3 appearance-none">
+                            <option>20% (Draft)</option>
+                            <option>50% (Strong)</option>
+                          </select>
+                        </div>
+                      </div>
 
-                        <article className="service-card group bg-white border border-gray-200 rounded-2xl p-8 hover:shadow-xl hover:shadow-gray-100 hover:border-blue-200 transition-all duration-300 hover:-translate-y-1">
-                            <div className="card-icon w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center mb-6 text-amber-600 text-xl group-hover:bg-amber-500 group-hover:text-white transition-colors duration-300">
-                                ✦
-                            </div>
-                            <h3 className="text-lg font-bold text-gray-900 mb-3 tracking-tight">Request Design Help</h3>
-                            <p className="text-gray-500 mb-6 leading-relaxed text-sm">Need a custom part? Submit a structured request to our pre-approved designers — include sketches, dimensions, and references.</p>
-                            <Link to="/request-designer" className="text-blue-600 font-semibold hover:text-blue-700 transition-colors text-sm inline-flex items-center gap-1">Hire a Designer <span>→</span></Link>
-                        </article>
-
-                    </div>
+                      <button className="sticker-button w-full bg-gdg-blue text-white mt-2 py-3.5 text-xs italic">
+                        Process Order Now →
+                      </button>
+                    </form>
+                  ) : (
+                    <form className="space-y-5">
+                      <div>
+                        <label className="input-label">Project Description</label>
+                        <textarea 
+                          placeholder="What would you like us to help you design?" 
+                          className="industrial-input min-h-[140px] text-xs py-3 resize-none"
+                        ></textarea>
+                      </div>
+                      <button className="sticker-button w-full bg-gdg-red text-white py-3.5 text-xs italic">
+                        Submit Inquiry →
+                      </button>
+                    </form>
+                  )}
+                  
+                  <div className="pt-4 border-t-[2px] border-black/5 flex items-center justify-center gap-2">
+                    <span className="w-1 h-1 bg-gdg-green rounded-full"></span>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-black/30 italic">
+                      SECURE CAMPUS BILLING
+                    </p>
+                  </div>
                 </div>
-            </section>
+              </div>
+            </div>
 
-            <section id="process-flow" className="py-24 bg-gray-50 border-t border-gray-100">
-                <div className="max-w-7xl mx-auto px-6">
-                    <div className="text-center mb-16">
-                        <p className="text-xs font-bold text-blue-600 tracking-widest uppercase mb-3">Simple Process</p>
-                        <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">How It Works</h2>
-                    </div>
+          </div>
+        </div>
+      </section>
 
-                    <ol className="steps-container grid md:grid-cols-4 gap-5">
-                        <li className="step bg-white rounded-2xl p-8 border border-gray-200 shadow-sm group hover:shadow-md hover:border-gray-300 transition-all duration-200">
-                            <span className="step-num block text-6xl font-extrabold text-blue-100 mb-4 leading-none tracking-tighter group-hover:text-blue-200 transition-colors">01</span>
-                            <strong className="block text-base font-bold text-gray-900 mb-2">Upload or Select</strong>
-                            <p className="text-gray-500 text-sm leading-relaxed">Upload your own file or choose a ready-made design from our library.</p>
-                        </li>
-                        <li className="step bg-white rounded-2xl p-8 border border-gray-200 shadow-sm group hover:shadow-md hover:border-gray-300 transition-all duration-200">
-                            <span className="step-num block text-6xl font-extrabold text-blue-100 mb-4 leading-none tracking-tighter group-hover:text-blue-200 transition-colors">02</span>
-                            <strong className="block text-base font-bold text-gray-900 mb-2">Review &amp; Quote</strong>
-                            <p className="text-gray-500 text-sm leading-relaxed">Get instant pricing. Lab staff review your submission for printability.</p>
-                        </li>
-                        <li className="step bg-white rounded-2xl p-8 border border-gray-200 shadow-sm group hover:shadow-md hover:border-gray-300 transition-all duration-200">
-                            <span className="step-num block text-6xl font-extrabold text-blue-100 mb-4 leading-none tracking-tighter group-hover:text-blue-200 transition-colors">03</span>
-                            <strong className="block text-base font-bold text-gray-900 mb-2">Fabrication</strong>
-                            <p className="text-gray-500 text-sm leading-relaxed">We print your object using quality-controlled materials and settings.</p>
-                        </li>
-                        <li className="step bg-white rounded-2xl p-8 border border-gray-200 shadow-sm group hover:shadow-md hover:border-gray-300 transition-all duration-200">
-                            <span className="step-num block text-6xl font-extrabold text-blue-100 mb-4 leading-none tracking-tighter group-hover:text-blue-200 transition-colors">04</span>
-                            <strong className="block text-base font-bold text-gray-900 mb-2">Track &amp; Pickup</strong>
-                            <p className="text-gray-500 text-sm leading-relaxed">Monitor your status live and collect your finished part at the USTP lab.</p>
-                        </li>
-                    </ol>
+      {/* Services Section - More compact padding */}
+      <section className="py-20 bg-gdg-green-pastel border-y-[3px] border-black relative">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-8">
+            <div className="max-w-xl">
+              <p className="text-[11px] font-black text-gdg-blue uppercase tracking-[0.3em] mb-3">OUR CAPABILITIES</p>
+              <h2 className="text-3xl md:text-4xl font-black text-black leading-[0.95] uppercase italic tracking-tighter">Manufacturing Power. <br/>At Your Fingertips.</h2>
+            </div>
+            <Link to="/database" className="sticker-button bg-white text-black whitespace-nowrap italic shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-xs py-2.5 px-5">
+              Explore Database →
+            </Link>
+          </div>
 
-                    <div className="text-center mt-14">
-                        <Link to="#quote" className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 px-10 rounded-xl shadow-md shadow-blue-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg text-sm">
-                            Get Started Now →
-                        </Link>
-                    </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { title: "FDM Printing", desc: "Reliable PLA/ABS printing for functional parts and structural prototypes.", icon: "⚙️" },
+              { title: "SLA Resin", desc: "Ultra-high detail resin prints for intricate jewelry and dental models.", icon: "🧪" },
+              { title: "CAD Design", desc: "Expert engineering support to turn your sketches into printable models.", icon: "✏️" }
+            ].map((service, i) => (
+              <div key={i} className={`sticker-card p-8 bg-white transform ${i === 1 ? 'rotate-1' : '-rotate-1'} hover:rotate-0 transition-transform`}>
+                <div className="w-12 h-12 bg-gdg-blue-pastel border-[2px] border-black rounded-xl flex items-center justify-center text-2xl mb-6 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+                  {service.icon}
                 </div>
-            </section>
-
-        </main>
-    )
+                <h3 className="text-xl font-black text-black mb-3 uppercase tracking-tighter">{service.title}</h3>
+                <p className="text-xs font-bold text-black/60 leading-relaxed">{service.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </main>
+  );
 }

@@ -1,95 +1,115 @@
-import {Link} from "react-router-dom";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 
 export default function Database() {
-    return(
-        <main className="eyebrow">
-            <section className="database-hero bg-white border-b border-gray-100 p-5">
-                <div className="database-hero-content max-w-7xl mx-auto">
-                    <span className="section-eyebrow inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-4 tracking-widest uppercase">
-                        ◈ Design Library
-                    </span>
-                    <h3 className="text-4xl font-extrabold text-gray-900 tracking-tight mb-2">Browse 3D Designs</h3>
-                    <p className="text-gray-500 text-base max-w-xl leading-relaxed">
-                        Explore our curated library of verified, printable 3D models. Select a design and submit a print request instantly.
+    const [search, setSearch] = useState("");
+
+    const designs = [
+        { id: 1, name: "Planetary Gear Set", cat: "Engineering", img: "⚙️", color: "bg-gdg-blue-pastel" },
+        { id: 2, name: "Succulent Planter", cat: "Decor", img: "🪴", color: "bg-gdg-green-pastel" },
+        { id: 3, name: "Laptop Stand Kit", cat: "Tools", img: "💻", color: "bg-gdg-yellow-pastel" },
+        { id: 4, name: "Chess Piece Set", cat: "Games", img: "♟️", color: "bg-gdg-red-pastel" },
+        { id: 5, name: "Cable Organizer", cat: "Tools", img: "🔌", color: "bg-gdg-blue-pastel" },
+        { id: 6, name: "Phone Tripod", cat: "Tech", img: "🤳", color: "bg-gdg-green-pastel" },
+    ];
+
+    return (
+        <main className="bg-white min-h-screen">
+            {/* Database Header */}
+            <section className="bg-gdg-yellow border-b-[4px] border-black py-16 relative overflow-hidden">
+                <div className="gdg-dot-grid absolute inset-0 opacity-20"></div>
+                <div className="max-w-7xl mx-auto px-6 relative z-10">
+                    <div className="die-cut inline-block mb-4">
+                        <div className="bg-white border-[2px] border-black px-4 py-1 font-black text-[10px] uppercase tracking-[0.2em]">
+                            VERIFIED DESIGN REPOSITORY
+                        </div>
+                    </div>
+                    <h1 className="text-5xl md:text-6xl font-black text-black uppercase italic tracking-tighter">Explore the Library</h1>
+                    <p className="text-lg font-bold text-black/60 mt-4 max-w-xl leading-tight">
+                        Verified, printable models approved by the USTP FabLab staff. <br/>
+                        <span className="bg-white px-2 border-2 border-black inline-block mt-2">Pick a sticker. Start manufacturing.</span>
                     </p>
                 </div>
             </section>
 
-            <section className="database-section p-5">
-                <div className="database-container max-w-7xl mx-auto">
+            <section className="py-12">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="grid lg:grid-cols-12 gap-10">
+                        
+                        {/* Left: Filter Sidebar */}
+                        <aside className="lg:col-span-3 space-y-8">
+                            <div className="sticker-card p-6 bg-slate-50">
+                                <label className="input-label">Search Library</label>
+                                <div className="relative">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Find a model..." 
+                                        className="industrial-input pl-10"
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                    />
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xl">🔍</span>
+                                </div>
 
-                    <div className="search-filter-bar bg-white border border-gray-200 rounded-2xl p-5 flex flex-col sm:flex-row gap-3 shadow-sm mb-5">
+                                <div className="mt-8 space-y-6">
+                                    <div>
+                                        <label className="input-label">Categories</label>
+                                        <div className="space-y-2">
+                                            {['Engineering', 'Art & Decor', 'Tools', 'Educational'].map(cat => (
+                                                <label key={cat} className="flex items-center gap-3 group cursor-pointer">
+                                                    <div className="w-5 h-5 border-[2px] border-black rounded group-hover:bg-gdg-yellow transition-all"></div>
+                                                    <span className="text-xs font-black uppercase tracking-tighter">{cat}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="input-label">Compatibility</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {['FDM', 'SLA', 'CNC'].map(tag => (
+                                                <span key={tag} className="bg-white border-[2px] border-black px-3 py-1 rounded-lg text-[10px] font-black uppercase">{tag}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </aside>
 
-                        <div className="search-wrapper flex-1">
-                            <div className="search flex w-full border items-center gap-2 rounded-xl bg-gray-50 border-gray-200 px-3 py-2.5">
-                                <span className="material-symbols-outlined text-gray-400">search</span>
-                                <input type="search" placeholder="Search designs..."
-                                    className="w-full bg-transparent text-sm text-gray-400 border-none focus:outline-none focus:ring-0 focus:border-transparent focus:shadow-none appearance-none cursor-not-allowed"/>
+                        {/* Right: Design Grid */}
+                        <div className="lg:col-span-9">
+                            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8">
+                                {designs.map((item, i) => (
+                                    <div key={item.id} className={`sticker-card overflow-hidden group transform ${i % 2 === 0 ? 'rotate-1' : '-rotate-1'} hover:rotate-0`}>
+                                        <div className={`${item.color} h-48 border-b-[3px] border-black flex items-center justify-center text-6xl group-hover:scale-110 transition-transform`}>
+                                          {item.img}
+                                        </div>
+                                        <div className="p-6">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <span className="text-[9px] font-black uppercase tracking-[0.2em] bg-black text-white px-2 py-0.5 rounded">
+                                                    {item.cat}
+                                                </span>
+                                            </div>
+                                            <h3 className="text-xl font-black uppercase tracking-tighter italic mb-4">{item.name}</h3>
+                                            <Link to="/upload" className="sticker-button w-full bg-white text-black text-center text-xs block py-2.5">
+                                                Order Print →
+                                            </Link>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Pagination / Load More Sticker */}
+                            <div className="mt-16 text-center">
+                                <button className="sticker-button bg-black text-white px-12 italic">
+                                    Load More Designs
+                                </button>
                             </div>
                         </div>
 
-                        <div className="hidden sm:block w-px bg-gray-200 self-stretch"></div>
-
-                        <div className="filter-group flex flex-wrap gap-3 items-center">
-
-                            <div className="flex flex-col gap-1">
-                                <label htmlFor="filter-category" className="text-xs font-semibold text-gray-400 uppercase tracking-wider pl-1">Category</label>
-                                <select id="filter-category" name="category"
-                                    className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm text-gray-400 focus:outline-none cursor-not-allowed min-w-32">
-                                    <option value="">All</option>
-                                    <option value="engineering">Engineering</option>
-                                    <option value="art">Art &amp; Decor</option>
-                                    <option value="tools">Tools &amp; Parts</option>
-                                    <option value="education">Education</option>
-                                    <option value="other">Other</option>
-                                </select>
-                            </div>
-
-                            <div className="flex flex-col gap-1">
-                                <label htmlFor="filter-material" className="text-xs font-semibold text-gray-400 uppercase tracking-wider pl-1">Material</label>
-                                <select id="filter-material" name="material"
-                                    className="px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm text-gray-400 focus:outline-none cursor-not-allowed min-w-28">
-                                    <option value="">All</option>
-                                    <option value="pla">PLA</option>
-                                    <option value="abs">ABS</option>
-                                    <option value="petg">PETG</option>
-                                </select>
-                            </div>
-
-                        </div>
                     </div>
-
-                    <div className="results-meta flex items-center justify-between my-5">
-                        <p className="results-count text-sm text-gray-500 font-medium">
-                            Showing <span className="text-gray-900 font-bold">0</span> designs
-                        </p>
-                        <div className="sort-wrapper flex items-center gap-2">
-                            <span className="text-xs text-gray-400 font-medium uppercase tracking-wider hidden sm:block">Sort:</span>
-                            <select id="sort-by" name="sort"
-                                className="px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm text-gray-400 focus:outline-none cursor-not-allowed">
-                                <option value="popular">Most Popular</option>
-                                <option value="newest">Newest</option>
-                                <option value="name">A–Z</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="empty-state-banner bg-white border border-blue-100 rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-6 shadow-sm">
-                        <div className="text-center sm:text-left flex-1">
-                            <h3 className="text-base font-bold text-gray-900 mb-1 tracking-tight">No Designs Available Yet</h3>
-                            <p className="text-sm text-gray-500 leading-relaxed max-w-md">
-                                The design library is being set up. Verified 3D models will appear here once the database is connected to the backend.
-                            </p>
-                        </div>
-                        <Link to="/request-designer"
-                            className="shrink-0 inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 px-6 rounded-xl shadow-md shadow-blue-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg whitespace-nowrap">
-                            Request a Designer →
-                        </Link>
-                    </div>
-
                 </div>
             </section>
-
         </main>
-    )
+    );
 }

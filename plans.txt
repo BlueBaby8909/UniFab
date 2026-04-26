@@ -1,0 +1,6 @@
+Normal user:
+Username: kyle@gmail.com
+password: 123
+
+Admin user: kyle@admin.com	
+password:123

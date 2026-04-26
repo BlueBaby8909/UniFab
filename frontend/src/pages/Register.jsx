@@ -1,77 +1,77 @@
-import {Link} from "react-router-dom";
+import { Link } from "react-router-dom";
 
 export default function Register() {
     return(
-        <main>
-            <section className=" eyebrow register-section min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
-                <div className="register-container bg-white rounded-2xl shadow-xl shadow-gray-200/60 border border-gray-100 p-8 w-full max-w-md">
+        <main className="bg-white min-h-screen relative overflow-hidden flex items-center justify-center py-20 px-6">
+            <div className="gdg-dot-grid absolute inset-0 -z-10 opacity-10"></div>
+            
+            <div className="sticker-card bg-white w-full max-w-2xl p-10 relative transform rotate-1">
+                <div className="absolute -top-8 -left-8 w-24 h-24 bg-gdg-green border-[3px] border-black rounded-xl flex items-center justify-center font-black text-white text-4xl -rotate-12 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">UF</div>
 
-                    <div className="form-header text-center mb-8">
-                        <span className="logo-icon w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-sm mx-auto mb-4">UF</span>
-                        <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight mb-1">Create Your Account</h1>
-                        <p className="text-sm text-gray-500">Join the USTP-CDO Fabrication Laboratory platform.</p>
+                <div className="text-center mb-10">
+                    <div className="die-cut inline-block mb-4">
+                        <div className="bg-gdg-yellow border-[2px] border-black px-4 py-1 font-black text-[10px] text-black uppercase tracking-widest">
+                            MEMBERSHIP APPLICATION
+                        </div>
+                    </div>
+                    <h1 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter">Join the Lab</h1>
+                </div>
+
+                <form onSubmit={(e) => e.preventDefault()} className="space-y-8">
+                    <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="input-label">First Name</label>
+                            <input type="text" placeholder="Juan" className="industrial-input" required />
+                        </div>
+                        <div>
+                            <label className="input-label">Last Name</label>
+                            <input type="text" placeholder="Dela Cruz" className="industrial-input" required />
+                        </div>
                     </div>
 
-                    <form onSubmit={(e) => e.preventDefault()} className="register-form">
-
-                        <div className="form-row grid grid-cols-2 gap-4">
-                            <div className="field-group flex flex-col gap-1.5 mb-5">
-                                <label htmlFor="first-name" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">First Name</label>
-                                <input type="text" id="first-name" name="first_name" placeholder="Juan" required
-                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-colors duration-200"/>
-                            </div>
-                            <div className="field-group flex flex-col gap-1.5 mb-5">
-                                <label htmlFor="last-name" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Name</label>
-                                <input type="text" id="last-name" name="last_name" placeholder="Dela Cruz" required
-                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-colors duration-200"/>
-                            </div>
+                    <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="input-label">Campus Email</label>
+                            <input type="email" placeholder="juan.dc@ustp.edu.ph" className="industrial-input" required />
                         </div>
-
-                        <div className="field-group flex flex-col gap-1.5 mb-5">
-                            <label htmlFor="email" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Email Address</label>
-                            <input type="email" id="email" name="email" placeholder="juan.delacruz@ustp.edu.ph" required
-                                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-colors duration-200"/>
-                        </div>
-
-                        <div className="field-group flex flex-col gap-1.5 mb-5">
-                            <label htmlFor="role" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">I am a...</label>
-                            <select id="role" name="role" required
-                                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-colors duration-200">
+                        <div>
+                            <label className="input-label">Department / Role</label>
+                            <select className="industrial-input appearance-none" required>
                                 <option value="">Select Role</option>
                                 <option value="student">Student</option>
                                 <option value="researcher">Researcher</option>
                                 <option value="faculty">Faculty</option>
-                                <option value="other">Other</option>
                             </select>
                         </div>
+                    </div>
 
-                        <div className="field-group flex flex-col gap-1.5 mb-5">
-                            <label htmlFor="password" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Password</label>
-                            <input type="password" id="password" name="password" placeholder="Min. 8 characters" required
-                                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-colors duration-200"/>
+                    <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="input-label">Password</label>
+                            <input type="password" placeholder="••••••••" className="industrial-input" required />
                         </div>
-
-                        <div className="field-group flex flex-col gap-1.5 mb-5">
-                            <label htmlFor="confirm-password" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Confirm Password</label>
-                            <input type="password" id="confirm-password" name="confirm_password" placeholder="Re-enter your password" required
-                                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-colors duration-200"/>
+                        <div>
+                            <label className="input-label">Confirm Password</label>
+                            <input type="password" placeholder="••••••••" className="industrial-input" required />
                         </div>
+                    </div>
 
-                        <div className="terms-row flex items-start gap-3 my-5">
-                            <input type="checkbox" id="terms" name="terms" required
-                                className="w-4 h-4 accent-blue-600 cursor-pointer shrink-0"/>
-                            <label htmlFor="terms" className="text-xs text-gray-500">I agree to the <Link to="/terms" className="text-blue-600 hover:text-blue-700 font-semibold transition-colors">Terms of Service</Link></label>
-                        </div>
+                    <div className="flex items-center gap-4 p-4 bg-slate-50 border-[3px] border-black rounded-xl">
+                        <input type="checkbox" className="w-6 h-6 border-[3px] border-black rounded accent-black" required id="terms" />
+                        <label htmlFor="terms" className="text-[10px] font-black uppercase tracking-wider leading-none cursor-pointer">
+                            I AGREE TO THE LABORATORY SAFETY & PRIVACY TERMS
+                        </label>
+                    </div>
 
-                        <div className="form-footer">
-                            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm py-3 rounded-xl shadow-md shadow-blue-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg mt-2">Create Account</button>
-                            <p className="login-hint text-center text-sm text-gray-500 mt-6">Already have an account? <Link to="/login" className="text-blue-600 font-semibold hover:text-blue-700 transition-colors">Log in</Link></p>
-                        </div>
+                    <button type="submit" className="sticker-button w-full bg-gdg-blue text-white italic py-5 text-lg">
+                        Create My Account →
+                    </button>
+                </form>
 
-                    </form>
-
-                </div>
-            </section>
+                <p className="text-center text-xs font-bold text-black/50 mt-10">
+                    Already a member? <Link to="/login" className="text-gdg-red font-black hover:underline uppercase italic">Back to Login</Link>
+                </p>
+            </div>
         </main>
     )
 }

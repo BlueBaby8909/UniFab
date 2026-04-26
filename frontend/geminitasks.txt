@@ -1,0 +1,2 @@
+  To resume this session: gemini --resume                   │
+│  e4b79785-08ff-4dea-a10c-fd722fe806c9

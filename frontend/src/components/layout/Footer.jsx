@@ -2,36 +2,48 @@ import { Link } from "react-router-dom";
 
 export default function Footer() {
     return(
-        <footer className="bg-gray-950 text-gray-400 py-16">
+        <footer className="bg-white border-t-[4px] border-black py-24">
             <div className="footer-content max-w-7xl mx-auto px-6">
-                <div className="grid md:grid-cols-3 gap-12 mb-12">
+                <div className="grid md:grid-cols-3 gap-16 mb-16">
                     <div>
-                        <div className="flex items-center gap-2 mb-4">
-                            <span className="w-7 h-7 bg-blue-600 rounded-md flex items-center justify-center text-white font-bold text-xs">UF</span>
-                            <h3 className="text-white font-bold text-base tracking-tight">UniFab</h3>
+                        <div className="flex items-center gap-3 mb-6">
+                            <span className="w-8 h-8 bg-gdg-green border-[2px] border-black rounded-lg flex items-center justify-center text-white font-black text-xs">UF</span>
+                            <h3 className="text-black font-black text-xl tracking-tighter uppercase italic">UniFab</h3>
                         </div>
-                        <p className="text-gray-500 text-sm leading-relaxed">Professional 3D printing and prototyping services for USTP students and researchers. Fast, affordable, and reliable.</p>
+                        <p className="text-black/60 font-bold text-sm leading-relaxed">
+                            Modular fabrication for USTP CDO. <br/>
+                            Built for students. Built for the future.
+                        </p>
                     </div>
                     <div>
-                        <h4 className="text-white font-semibold text-sm mb-5 uppercase tracking-wider">Quick Links</h4>
-                        <ul className="space-y-3 text-gray-500 text-sm">
-                            <li><Link to="/" className="hover:text-white transition-colors duration-150">About the Lab</Link></li>
-                            <li><Link to="#services-grid" className="hover:text-white transition-colors duration-150">Services</Link></li>
-                            <li><Link to="/database" className="hover:text-white transition-colors duration-150">Design Database</Link></li>
-                            <li><Link to="/faq" className="hover:text-white transition-colors duration-150">FAQ</Link></li>
+                        <h4 className="text-black font-black text-xs mb-8 uppercase tracking-[0.2em]">Sitemap</h4>
+                        <ul className="space-y-4">
+                            {['About', 'Services', 'Database', 'FAQ'].map(link => (
+                                <li key={link}>
+                                    <Link to="/" className="text-sm font-bold text-black/50 hover:text-gdg-blue transition-colors">
+                                        {link}
+                                    </Link>
+                                </li>
+                            ))}
                         </ul>
                     </div>
                     <div>
-                        <h4 className="text-white font-semibold text-sm mb-5 uppercase tracking-wider">Contact</h4>
-                        <address className="text-gray-500 not-italic text-sm space-y-2">
-                            <p>USTP–CDO Fabrication Laboratory</p>
-                            <p>Cagayan de Oro City, Philippines</p>
-                            <a href="mailto:fablab@ustp.edu.ph" className="hover:text-white transition-colors duration-150 inline-block mt-1">fablab@ustp.edu.ph</a>
+                        <h4 className="text-black font-black text-xs mb-8 uppercase tracking-[0.2em]">Contact</h4>
+                        <address className="not-italic text-sm space-y-3">
+                            <p className="font-bold text-black/70">USTP Cagayan de Oro City, Philippines</p>
+                            <a href="mailto:fablab@ustp.edu.ph" className="sticker-button bg-gdg-blue-pastel text-black text-[10px] inline-block">
+                                fablab@ustp.edu.ph
+                            </a>
                         </address>
                     </div>
                 </div>
-                <div className="border-t border-gray-800 pt-8">
-                    <p className="text-center text-gray-600 text-sm">&copy; 2024 USTP-CDO Fabrication Laboratory. All rights reserved.</p>
+                <div className="border-t-[2px] border-black/10 pt-12 flex flex-col md:flex-row justify-between items-center gap-6">
+                    <p className="text-black/30 text-[10px] font-black uppercase tracking-widest italic">&copy; 2024 USTP-CDO FABRICATION LAB</p>
+                    <div className="flex gap-4">
+                        <div className="w-8 h-8 bg-black rounded-full"></div>
+                        <div className="w-8 h-8 bg-gdg-red border-2 border-black rounded-full"></div>
+                        <div className="w-8 h-8 bg-gdg-yellow border-2 border-black rounded-full"></div>
+                    </div>
                 </div>
             </div>
         </footer>

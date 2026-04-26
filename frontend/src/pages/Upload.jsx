@@ -1,221 +1,197 @@
-import Footer from "../components/layout/Footer";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useCart } from "../hooks/useCart";
 
 export default function Upload() {
-    return(
-        <main className="flex-grow pt-10 pb-24">
-            <div className="max-w-7xl mx-auto px-6">
-                <div className="mb-10">
-                    <span className="section-eyebrow inline-flex items-center gap-2 bg-blue-50 border border-blue-100 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-4 tracking-widest uppercase">
-                        &#9651; Upload &amp; Configure
-                    </span>
-                    <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight mb-3">Upload Your 3D File</h1>
-                    <p className="text-gray-500 text-base max-w-2xl leading-relaxed">Upload your 3D models (STL, OBJ, STEP) and configure your print settings to get an instant quote and start fabrication.</p>
+    const { addToCart } = useCart();
+    const navigate = useNavigate();
+    const [config, setConfig] = useState({
+        material: "PLA",
+        quality: "0.2",
+        color: "white",
+        quantity: 1,
+        infill: "20"
+    });
+
+    const updateConfig = (key, val) => setConfig(prev => ({ ...prev, [key]: val }));
+
+    const handleAddToCart = () => {
+        const item = {
+            id: Date.now(), // Mock ID
+            name: "bracket_v2_final.stl",
+            material: config.material,
+            quality: config.quality,
+            color: config.color,
+            quantity: parseInt(config.quantity),
+            infill: config.infill,
+            price: 250, // Mock fixed price
+            tech: "FDM",
+            colorClass: "bg-gdg-blue-pastel"
+        };
+        addToCart(item);
+        navigate("/cart");
+    };
+
+    return (
+        <main className="bg-white min-h-screen">
+            {/* Header / Progress Bar Sticker */}
+            <div className="bg-gdg-blue border-b-[4px] border-black py-12 relative overflow-hidden">
+                <div className="gdg-dot-grid absolute inset-0 opacity-20"></div>
+                <div className="max-w-7xl mx-auto px-6 relative z-10 text-center lg:text-left">
+                    <div className="die-cut inline-block mb-4">
+                        <div className="bg-white border-[2px] border-black px-3 py-1 font-black text-[10px] uppercase tracking-widest">
+                            STEP 02 — TECHNICAL SPECIFICATION
+                        </div>
+                    </div>
+                    <h1 className="text-4xl md:text-5xl font-black text-white uppercase italic tracking-tighter">Configure Your Manufacture</h1>
                 </div>
+            </div>
 
-                <div className="grid lg:grid-cols-3 gap-8 items-start">
-                    <div className="lg:col-span-2 space-y-6">
-
-                        <section className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">1</div>
-                                <h2 className="text-lg font-bold text-gray-900">Upload File</h2>
+            <div className="max-w-7xl mx-auto px-6 py-12">
+                <div className="grid lg:grid-cols-12 gap-12 items-start">
+                    
+                    {/* Left: Configuration Form */}
+                    <div className="lg:col-span-8 space-y-10">
+                        
+                        {/* 1. File Review Sticker */}
+                        <section className="sticker-card p-8 bg-slate-50">
+                            <div className="flex items-center gap-4 mb-6">
+                                <span className="w-10 h-10 bg-black text-white rounded-lg flex items-center justify-center font-black">01</span>
+                                <h2 className="text-xl font-black uppercase tracking-tight italic">Design Review</h2>
                             </div>
-
-                            <div id="drop-zone" className="border-2 border-dashed border-blue-200 bg-blue-50/30 rounded-2xl p-10 text-center hover:bg-blue-50 transition-colors duration-300 cursor-pointer relative">
-                                <input type="file" id="file-upload" name="file-upload" accept=".stl,.obj,.step"
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"/>
-
-                                <div id="upload-content">
-                                    <svg className="w-14 h-14 mx-auto text-blue-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                                    </svg>
-                                    <h3 className="text-base font-bold text-gray-800 mb-1">Drag &amp; Drop your 3D file here</h3>
-                                    <p className="text-sm text-gray-500 mb-4">or click to browse from your computer</p>
-                                    <span className="inline-flex items-center bg-white border border-gray-200 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 shadow-sm hover:border-blue-300 transition-colors">
-                                        Browse Files
-                                    </span>
+                            <div className="flex items-center gap-6 p-4 bg-white border-[3px] border-black rounded-xl">
+                                <div className="w-16 h-16 bg-gdg-blue-pastel border-[2px] border-black rounded-lg flex items-center justify-center text-3xl">📦</div>
+                                <div className="flex-1">
+                                    <p className="font-black text-sm uppercase text-outfit">bracket_v2_final.stl</p>
+                                    <p className="text-[10px] font-bold text-black/40 uppercase tracking-widest">12.4 MB · 45 x 30 x 12 mm</p>
                                 </div>
-
-                                <div id="file-selected" className="hidden flex-col items-center justify-center">
-                                    <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-4">
-                                        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                        </svg>
-                                    </div>
-                                    <h3 id="filename-display" className="text-base font-bold text-gray-900 mb-1">filename.stl</h3>
-                                    <p id="filesize-display" className="text-sm text-gray-500 mb-4">0 MB</p>
-                                    <button type="button" id="remove-file"
-                                        className="text-sm text-red-500 hover:text-red-600 font-medium z-20 relative transition-colors">
-                                        Remove file
-                                    </button>
-                                </div>
+                                <button className="text-xs font-black text-gdg-red uppercase tracking-widest border-b-2 border-gdg-red hover:text-black hover:border-black transition-all">Replace File</button>
                             </div>
-
-                            <p className="text-xs text-gray-400 mt-4 flex items-center gap-2">
-                                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                Max file size: 50MB &nbsp;&middot;&nbsp; Accepted formats: .STL, .OBJ, .STEP
-                            </p>
                         </section>
 
-                        <section className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm opacity-50 pointer-events-none transition-opacity duration-300" id="settings-section">
-                            <div className="flex items-center gap-3 mb-6 border-b border-gray-100 pb-5">
-                                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">2</div>
-                                <h2 className="text-lg font-bold text-gray-900">Print Settings</h2>
+                        {/* 2. Material & Technology */}
+                        <section className="sticker-card p-8">
+                            <div className="flex items-center gap-4 mb-8">
+                                <span className="w-10 h-10 bg-gdg-blue text-white rounded-lg flex items-center justify-center font-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">02</span>
+                                <h2 className="text-xl font-black uppercase tracking-tight italic">Printing Specs</h2>
                             </div>
 
                             <div className="space-y-8">
-                                <div className="grid sm:grid-cols-2 gap-6">
-                                    <div className="field-group flex flex-col gap-1.5">
-                                        <label htmlFor="material" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Material</label>
-                                        <select id="material" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 bg-white text-sm text-gray-800 transition-colors">
-                                            <option value="pla" data-price="1.0">PLA (Standard) &mdash; Cost Effective</option>
-                                            <option value="abs" data-price="1.5">ABS (Durable) &mdash; High Impact</option>
-                                            <option value="petg" data-price="1.3">PETG (Flexible) &mdash; Heat Resistant</option>
-                                            <option value="tpu" data-price="2.0">TPU (Rubber-like) &mdash; Ultra Flexible</option>
-                                        </select>
-                                    </div>
-                                    <div className="field-group flex flex-col gap-1.5">
-                                        <label htmlFor="color" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Color</label>
-                                        <select id="color" className="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 bg-white text-sm text-gray-800 transition-colors">
-                                            <option value="white">White</option>
-                                            <option value="black">Black</option>
-                                            <option value="grey">Grey</option>
-                                            <option value="blue">UniFab Blue</option>
-                                            <option value="red">Industrial Red</option>
-                                        </select>
-                                    </div>
-                                </div>
-
                                 <div>
-                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-3">Resolution (Layer Height)</label>
-                                    <div className="grid grid-cols-3 gap-4">
-
-                                        <label className="cursor-pointer">
-                                            <input type="radio" name="quality" value="0.3" data-price="0.8" className="radio-card-input hidden"/>
-                                            <div className="radio-card p-4 border border-gray-200 rounded-xl hover:border-blue-300 transition-colors h-full">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <span className="font-bold text-gray-900 text-sm">Draft</span>
-                                                    <svg className="w-5 h-5 text-gray-300 radio-icon transition-colors" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
-                                                    </svg>
+                                    <label className="input-label">Material Category</label>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        {[
+                                            { id: 'PLA', label: 'PLA', sub: 'Standard' },
+                                            { id: 'ABS', label: 'ABS', sub: 'Industrial' },
+                                            { id: 'PETG', label: 'PETG', sub: 'Resistant' },
+                                            { id: 'TPU', label: 'TPU', sub: 'Flexible' }
+                                        ].map(opt => (
+                                            <label key={opt.id} className="cursor-pointer">
+                                                <input 
+                                                    type="radio" name="mat" className="peer sr-only" 
+                                                    checked={config.material === opt.id}
+                                                    onChange={() => updateConfig('material', opt.id)}
+                                                />
+                                                <div className="peer-checked:bg-gdg-blue peer-checked:text-white border-[3px] border-black rounded-xl p-4 text-center transition-all hover:bg-slate-50">
+                                                    <p className="font-black text-sm uppercase leading-none">{opt.label}</p>
+                                                    <p className="text-[9px] font-bold opacity-60 mt-1 uppercase tracking-tighter">{opt.sub}</p>
                                                 </div>
-                                                <p className="text-xs text-gray-500 leading-relaxed">0.3mm layer. Fastest print, visible lines.</p>
-                                            </div>
-                                        </label>
-
-                                        <label className="cursor-pointer">
-                                            <input type="radio" name="quality" value="0.2" data-price="1.0" className="radio-card-input hidden" checked/>
-                                            <div className="radio-card p-4 border border-blue-600 bg-blue-50 rounded-xl h-full shadow-[0_0_0_1px_#2563eb]">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <span className="font-bold text-gray-900 text-sm">Standard</span>
-                                                    <svg className="w-5 h-5 text-blue-600 radio-icon" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
-                                                    </svg>
-                                                </div>
-                                                <p className="text-xs text-gray-500 leading-relaxed">0.2mm layer. Best balance of speed &amp; quality.</p>
-                                            </div>
-                                        </label>
-
-                                        <label className="cursor-pointer">
-                                            <input type="radio" name="quality" value="0.1" data-price="1.5" className="radio-card-input hidden"/>
-                                            <div className="radio-card p-4 border border-gray-200 rounded-xl hover:border-blue-300 transition-colors h-full">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <span className="font-bold text-gray-900 text-sm">High Detail</span>
-                                                    <svg className="w-5 h-5 text-gray-300 radio-icon transition-colors" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
-                                                    </svg>
-                                                </div>
-                                                <p className="text-xs text-gray-500 leading-relaxed">0.1mm layer. Smoothest surface finish.</p>
-                                            </div>
-                                        </label>
-
+                                            </label>
+                                        ))}
                                     </div>
                                 </div>
 
-                                <div className="grid sm:grid-cols-2 gap-6">
-                                    <div className="field-group flex flex-col gap-1.5">
-                                        <label htmlFor="infill" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Infill Density</label>
+                                <div className="grid md:grid-cols-2 gap-8">
+                                    <div>
+                                        <label className="input-label">Layer Height</label>
+                                        <select 
+                                            value={config.quality} 
+                                            onChange={(e) => updateConfig('quality', e.target.value)}
+                                            className="industrial-input appearance-none"
+                                        >
+                                            <option value="0.2">0.2mm - Balanced</option>
+                                            <option value="0.1">0.1mm - High Detail</option>
+                                            <option value="0.3">0.3mm - Draft Speed</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="input-label">Infill Density</label>
                                         <div className="flex items-center gap-4">
-                                            <input type="range" id="infill" min="10" max="100" step="10" value="20"
-                                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"/>
-                                            <span id="infill-value" className="w-14 text-center font-bold text-gray-900 bg-gray-100 py-1.5 rounded-lg text-sm shrink-0">20%</span>
-                                        </div>
-                                        <p className="text-xs text-gray-400 mt-1">Higher density increases strength and weight.</p>
-                                    </div>
-
-                                    <div className="field-group flex flex-col gap-1.5">
-                                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Quantity</label>
-                                        <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden w-32 shadow-sm">
-                                            <button type="button" id="qty-minus"
-                                                className="px-4 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold transition-colors text-sm">&#8722;</button>
-                                            <input type="number" id="quantity" value="1" min="1" max="50"
-                                                className="w-full text-center py-2.5 focus:outline-none font-bold text-gray-900 text-sm border-x border-gray-200"/>
-                                            <button type="button" id="qty-plus"
-                                                className="px-4 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold transition-colors text-sm">&#43;</button>
+                                            <input 
+                                                type="range" min="10" max="100" step="10" 
+                                                value={config.infill} 
+                                                onChange={(e) => updateConfig('infill', e.target.value)}
+                                                className="flex-1 accent-black h-2"
+                                            />
+                                            <span className="w-16 sticker-card py-2 bg-gdg-yellow text-center font-black text-xs">{config.infill}%</span>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </section>
 
+                        {/* 3. Post-Processing / Color */}
+                        <section className="sticker-card p-8">
+                            <div className="flex items-center gap-4 mb-8">
+                                <span className="w-10 h-10 bg-gdg-yellow text-black rounded-lg flex items-center justify-center font-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">03</span>
+                                <h2 className="text-xl font-black uppercase tracking-tight italic">Finish & Color</h2>
+                            </div>
+                            <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+                                {['White', 'Black', 'Blue', 'Red', 'Green', 'Grey'].map(c => (
+                                    <label key={c} className="cursor-pointer">
+                                        <input 
+                                            type="radio" name="color" className="peer sr-only" 
+                                            checked={config.color === c.toLowerCase()}
+                                            onChange={() => updateConfig('color', c.toLowerCase())}
+                                        />
+                                        <div className={`peer-checked:ring-[4px] peer-checked:ring-black border-[3px] border-black rounded-full w-12 h-12 mx-auto mb-2 transition-all`} style={{ backgroundColor: c === 'Blue' ? '#4285F4' : c === 'Red' ? '#EA4335' : c === 'Green' ? '#34A853' : c.toLowerCase() }}></div>
+                                        <p className="text-[10px] font-black uppercase text-center">{c}</p>
+                                    </label>
+                                ))}
                             </div>
                         </section>
 
                     </div>
 
-                    <div className="lg:col-span-1">
-                        <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 sticky top-24 overflow-hidden">
-                            <div className="h-1 w-full bg-gradient-to-r from-blue-500 to-indigo-500"></div>
-
-                            <div className="p-6">
-                                <h3 className="text-base font-bold text-gray-900 mb-5 tracking-tight">Order Summary</h3>
-
-                                <div className="space-y-3 mb-6">
-                                    <div className="flex justify-between items-start gap-4">
-                                        <span className="text-sm text-gray-500 shrink-0">File</span>
-                                        <span id="summary-file" className="text-sm font-semibold text-gray-900 text-right truncate">None selected</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-sm text-gray-500">Material</span>
-                                        <span id="summary-material" className="text-sm font-semibold text-gray-900">PLA</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-sm text-gray-500">Resolution</span>
-                                        <span id="summary-resolution" className="text-sm font-semibold text-gray-900">Standard (0.2mm)</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-sm text-gray-500">Infill</span>
-                                        <span id="summary-infill" className="text-sm font-semibold text-gray-900">20%</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-sm text-gray-500">Quantity</span>
-                                        <span id="summary-qty" className="text-sm font-semibold text-gray-900">1x</span>
-                                    </div>
+                    {/* Right: Sticky Price Summary Sticker */}
+                    <div className="lg:col-span-4 sticky top-32">
+                        <div className="sticker-card bg-white overflow-hidden transform rotate-1">
+                            <div className="bg-black text-white p-4 text-center italic">
+                                <p className="text-xs font-black uppercase tracking-widest">ORDER SUMMARY</p>
+                            </div>
+                            <div className="p-8 space-y-4">
+                                <div className="flex justify-between border-b-2 border-black/5 pb-2">
+                                    <span className="text-[10px] font-black uppercase text-black/40">Item</span>
+                                    <span className="text-xs font-black uppercase italic truncate max-w-[150px]">bracket_v2.stl</span>
                                 </div>
-
-                                <div className="border-t border-gray-100 pt-5 mb-5">
+                                <div className="flex justify-between border-b-2 border-black/5 pb-2">
+                                    <span className="text-[10px] font-black uppercase text-black/40">Material</span>
+                                    <span className="text-xs font-black uppercase italic">{config.material}</span>
+                                </div>
+                                <div className="flex justify-between border-b-2 border-black/5 pb-2">
+                                    <span className="text-[10px] font-black uppercase text-black/40">Resolution</span>
+                                    <span className="text-xs font-black uppercase italic">{config.quality}mm</span>
+                                </div>
+                                
+                                <div className="pt-6">
                                     <div className="flex justify-between items-end mb-1">
-                                        <span className="text-sm font-bold text-gray-900">Estimated Total</span>
-                                        <span className="text-3xl font-extrabold text-blue-600 leading-none">&#8369;<span id="price-total">0.00</span></span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Est. Total</span>
+                                        <span className="text-4xl font-black text-gdg-blue leading-none">₱{(config.quantity * 250).toFixed(2)}</span>
                                     </div>
-                                    <p className="text-xs text-gray-400 text-right mt-1">Tax included &middot; Final price may vary.</p>
+                                    <p className="text-[9px] font-bold text-black/30 uppercase tracking-tighter text-right">Includes USTP Lab Fee & Materials</p>
                                 </div>
 
-                                <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-4 mb-5 flex gap-3">
-                                    <svg className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    <div>
-                                        <p className="text-xs font-semibold text-gray-900 mb-0.5">Estimated Turnaround</p>
-                                        <p id="turnaround-time" className="text-xs text-gray-500">Please upload a file first.</p>
-                                    </div>
+                                <div className="space-y-3 pt-6">
+                                    <button 
+                                        onClick={handleAddToCart}
+                                        className="sticker-button w-full bg-gdg-blue text-white text-sm italic"
+                                    >
+                                        Add to Cart →
+                                    </button>
+                                    <button className="w-full text-[10px] font-black uppercase tracking-[0.2em] text-black/40 hover:text-black transition-colors">
+                                        Save Configuration
+                                    </button>
                                 </div>
-
-                                <button id="submit-btn" disabled
-                                    className="w-full bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-semibold py-3.5 px-6 rounded-xl shadow-md shadow-blue-200 text-sm hover:-translate-y-0.5 hover:shadow-lg mb-3">
-                                    Proceed to Checkout &#8594;
-                                </button>
-                                <p className="text-xs text-center text-gray-400">Lab staff will review your file before printing.</p>
                             </div>
                         </div>
                     </div>
@@ -223,5 +199,5 @@ export default function Upload() {
                 </div>
             </div>
         </main>
-    )
+    );
 }

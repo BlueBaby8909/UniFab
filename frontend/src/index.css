@@ -1,126 +1,76 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* ============================================
-   UNIFAB — Custom Design Layer
-   Applied on top of Tailwind CSS v4
+   UNIFAB — GDG Sticker Design Layer
    ============================================ */
 
+@layer components {
+  .sticker-card {
+    @apply bg-white border-[3px] border-black rounded-2xl shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all;
+  }
+  
+  .sticker-card:hover {
+    @apply -translate-x-1 -translate-y-1 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)];
+  }
+
+  .sticker-button {
+    @apply border-[3px] border-black px-6 py-3 font-black uppercase tracking-wider rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all font-outfit;
+  }
+
+  .industrial-input {
+    @apply w-full px-4 py-3 border-[2px] border-black rounded-xl bg-white text-sm font-bold transition-all outline-none font-sans;
+  }
+  
+  .industrial-input:focus {
+    border-color: #4285F4;
+    outline: none;
+    box-shadow: none;
+  }
+
+  .input-label {
+    @apply block text-[12px] font-black text-black uppercase tracking-widest mb-2 ml-1 font-outfit;
+  }
+}
+
+.gdg-dot-grid {
+  background-image: radial-gradient(circle, #000 1.5px, transparent 1.5px);
+  background-size: 32px 32px;
+  opacity: 0.05;
+}
+
 /* ---- Typography ---- */
-.unifab-body {
-    font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+body {
+  @apply font-sans;
 }
 
-.hero-heading,
-h1, h2, h3 {
-    font-family: 'Syne', ui-sans-serif, system-ui, sans-serif;
+h1, h2, h3, h4, h5, h6, .font-black {
+  @apply font-outfit tracking-tight;
 }
 
-/* ---- Logo ---- */
-.logo-text {
-    font-family: 'Syne', ui-sans-serif, system-ui, sans-serif;
-    letter-spacing: -0.02em;
+.die-cut {
+  @apply relative;
 }
 
-/* ---- Hero background subtle dot grid ---- */
-.hero-bg-grid {
-    background-image: radial-gradient(circle, #d1d5db 1px, transparent 1px);
-    background-size: 28px 28px;
-    opacity: 0.45;
-}
-
-/* ---- Stat number font ---- */
-.stat-number {
-    font-family: 'Syne', ui-sans-serif, system-ui, sans-serif;
-    letter-spacing: -0.03em;
-}
-
-/* ---- Step numbers ---- */
-.step-num {
-    font-family: 'Syne', ui-sans-serif, system-ui, sans-serif;
-    letter-spacing: -0.05em;
-}
-
-/* ---- Service card icon centering ---- */
-.card-icon {
-    font-style: normal;
-    line-height: 1;
+.die-cut::before {
+  content: '';
+  @apply absolute -inset-2 bg-white -z-10 rounded-[inherit] border-[2px] border-slate-100;
 }
 
 /* ---- Smooth scrolling ---- */
 html {
-    scroll-behavior: smooth;
-}
-
-/* ---- File input custom styling ---- */
-input[type="file"]::file-selector-button {
-    font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  scroll-behavior: smooth;
 }
 
 /* ---- Focus ring global override ---- */
 *:focus-visible {
-    outline: 2px solid #3b82f6;
-    outline-offset: 2px;
-    border-radius: 6px;
+  outline: 2px solid #4285F4;
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
-/* ---- Animate pulse for live indicator ---- */
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-}
-.animate-pulse {
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* ---- Subtle entrance animation for hero ---- */
-@keyframes fadeSlideUp {
-    from {
-        opacity: 0;
-        transform: translateY(16px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.eyebrow {
-    animation: fadeSlideUp 0.5s ease-out both;
-    animation-delay: 0.05s;
-}
-
-.hero-heading {
-    animation: fadeSlideUp 0.5s ease-out both;
-    animation-delay: 0.15s;
-}
-
-.hero-text p {
-    animation: fadeSlideUp 0.5s ease-out both;
-    animation-delay: 0.25s;
-}
-
-.hero-cta-group {
-    animation: fadeSlideUp 0.5s ease-out both;
-    animation-delay: 0.35s;
-}
-
-.trust-row {
-    animation: fadeSlideUp 0.5s ease-out both;
-    animation-delay: 0.45s;
-}
-
-.quote-widget {
-    animation: fadeSlideUp 0.6s ease-out both;
-    animation-delay: 0.2s;
-}
-
+/* ---- Radio Card Selection ---- */
 .radio-card-input:checked + .radio-card {
-            border-color: #2563eb;
-            background-color: #eff6ff;
-            box-shadow: 0 0 0 1px #2563eb;
-        }
-        .radio-card-input:checked + .radio-card .radio-icon {
-            color: #2563eb;
-        }
+  @apply bg-gdg-blue-pastel border-gdg-blue shadow-[4px_4px_0px_0px_rgba(66,133,244,1)];
+}
