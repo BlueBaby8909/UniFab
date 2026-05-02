@@ -7,6 +7,7 @@ async function getAllDesignOverrides() {
       mmf_object_id,
       is_hidden,
       is_pinned,
+      is_print_ready,
       client_note,
       created_by,
       updated_by,
@@ -27,6 +28,7 @@ async function getDesignOverrideById(overrideId) {
       mmf_object_id,
       is_hidden,
       is_pinned,
+      is_print_ready,
       client_note,
       created_by,
       updated_by,
@@ -48,6 +50,7 @@ async function getDesignOverrideByMmfObjectId(mmfObjectId) {
       mmf_object_id,
       is_hidden,
       is_pinned,
+      is_print_ready,
       client_note,
       created_by,
       updated_by,
@@ -66,6 +69,7 @@ async function createDesignOverride({
   mmfObjectId,
   isHidden = false,
   isPinned = false,
+  isPrintReady = false,
   clientNote = null,
   createdBy,
   updatedBy,
@@ -75,17 +79,19 @@ async function createDesignOverride({
       mmf_object_id,
       is_hidden,
       is_pinned,
+      is_print_ready,
       client_note,
       created_by,
       updated_by
     )
-    VALUES (?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
 
   const [result] = await pool.query(sql, [
     mmfObjectId,
     isHidden,
     isPinned,
+    isPrintReady,
     clientNote,
     createdBy,
     updatedBy,
@@ -100,6 +106,7 @@ async function updateDesignOverrideById(overrideId, payload) {
     SET
       is_hidden = ?,
       is_pinned = ?,
+      is_print_ready = ?,
       client_note = ?,
       updated_by = ?
     WHERE id = ?
@@ -108,6 +115,7 @@ async function updateDesignOverrideById(overrideId, payload) {
   const [result] = await pool.query(sql, [
     payload.isHidden,
     payload.isPinned,
+    payload.isPrintReady,
     payload.clientNote,
     payload.updatedBy,
     overrideId,
@@ -151,6 +159,7 @@ async function getDesignOverridesByMmfObjectIds(mmfObjectIds) {
       mmf_object_id,
       is_hidden,
       is_pinned,
+      is_print_ready,
       client_note,
       created_by,
       updated_by,

@@ -15,6 +15,7 @@ import healthCheckRoutes from "./src/routes/healthcheck.routes.js";
 import designsRoutes from "./src/routes/designs.routes.js";
 import designRequestRoutes from "./src/routes/design-requests.routes.js";
 import printRequestRoutes from "./src/routes/print-request.routes.js";
+import { startExpiredQuoteCleanupJob } from "./src/services/quote-cleanup.service.js";
 import { ApiError } from "./src/utils/api-error.js";
 
 const app = express();
@@ -61,6 +62,40 @@ app.use(
 );
 
 // ─── Routes ───────────────────────────────────────────────────
+app.use(
+  "/storage/print-requests/payment-slips",
+  express.static(
+    path.resolve(process.cwd(), "storage", "print-requests", "payment-slips"),
+    {
+      fallthrough: false,
+      index: false,
+      etag: true,
+      immutable: true,
+      maxAge: "7d",
+      setHeaders(res) {
+        res.setHeader("X-Content-Type-Options", "nosniff");
+      },
+    },
+  ),
+);
+
+app.use(
+  "/storage/design-requests/references",
+  express.static(
+    path.resolve(process.cwd(), "storage", "design-requests", "references"),
+    {
+      fallthrough: false,
+      index: false,
+      etag: true,
+      immutable: true,
+      maxAge: "7d",
+      setHeaders(res) {
+        res.setHeader("X-Content-Type-Options", "nosniff");
+      },
+    },
+  ),
+);
+
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/quotes", quoteRoutes);
 app.use("/api/v1/pricing-config", pricingConfigRoutes);
@@ -113,4 +148,5 @@ app.use((err, req, res, next) => {
 const port = process.env.PORT || 5000;
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
+  startExpiredQuoteCleanupJob();
 });

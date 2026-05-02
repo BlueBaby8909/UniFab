@@ -6,6 +6,7 @@ import {
   getPrintRequestDetailForUser,
   listAdminPrintRequests,
   updateAdminPrintRequestStatus,
+  uploadAdminPrintRequestPaymentSlip,
   uploadClientPrintRequestReceipt,
   getPrintRequestReceiptForUser,
 } from "../services/print-request.service.js";
@@ -43,6 +44,8 @@ function normalizePrintRequest(printRequest) {
     fileMimeType: printRequest.file_mime_type,
     fileSize: printRequest.file_size,
     designSnapshot: parseJsonSafely(printRequest.design_snapshot),
+    quoteToken: printRequest.quote_token,
+    quoteSnapshot: parseJsonSafely(printRequest.quote_snapshot),
     material: printRequest.material,
     printQuality: printRequest.print_quality,
     infill: Number(printRequest.infill),
@@ -204,6 +207,26 @@ const uploadPrintRequestReceipt = asyncHandler(async (req, res) => {
   );
 });
 
+const uploadPrintRequestPaymentSlip = asyncHandler(async (req, res) => {
+  const result = await uploadAdminPrintRequestPaymentSlip({
+    requestId: req.params.requestId,
+    adminId: req.user.id,
+    body: req.body,
+    file: req.file,
+  });
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        printRequest: normalizePrintRequest(result.printRequest),
+        statusHistory: result.statusHistory.map(normalizeStatusHistory),
+      },
+      "Payment slip uploaded successfully",
+    ),
+  );
+});
+
 const getPrintRequestReceipt = asyncHandler(async (req, res) => {
   const receipt = await getPrintRequestReceiptForUser({
     user: req.user,
@@ -225,6 +248,7 @@ export {
   getMyPrintRequestDetail,
   listAllPrintRequests,
   updatePrintRequestStatus,
+  uploadPrintRequestPaymentSlip,
   uploadPrintRequestReceipt,
   getPrintRequestReceipt,
 };

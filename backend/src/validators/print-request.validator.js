@@ -1,31 +1,12 @@
 import { body, param, query } from "express-validator";
 import {
-  PRINT_REQUEST_SOURCE_TYPES,
   PRINT_REQUEST_SOURCE_TYPE_VALUES,
   PRINT_REQUEST_STATUS_VALUES,
-  PRINT_QUALITY_VALUES,
   MAX_PRINT_REQUEST_NOTES_LENGTH,
-  MAX_PRINT_REQUEST_QUANTITY,
 } from "../constants/print-request.constants.js";
-
-const LIBRARY_SOURCE_VALUES = ["local", "myminifactory"];
 
 function hasOwnField(req, fieldName) {
   return Object.prototype.hasOwnProperty.call(req.body, fieldName);
-}
-
-function hasText(value) {
-  return value !== undefined && value !== null && String(value).trim() !== "";
-}
-
-function getSourceType(req) {
-  return hasText(req.body.sourceType) ? String(req.body.sourceType).trim() : "";
-}
-
-function getLibrarySource(req) {
-  return hasText(req.body.librarySource)
-    ? String(req.body.librarySource).trim()
-    : "";
 }
 
 function rejectForbiddenClientFields(req) {
@@ -60,50 +41,16 @@ function rejectForbiddenClientFields(req) {
 
 const submitPrintRequestValidator = () => {
   return [
-    body("sourceType")
+    body("quoteToken")
       .trim()
       .notEmpty()
-      .withMessage("Source type is required")
+      .withMessage("Quote token is required")
       .bail()
-      .isIn(PRINT_REQUEST_SOURCE_TYPE_VALUES)
-      .withMessage(
-        "Source type must be one of: upload, library, design_request",
-      ),
-
-    body("material")
-      .trim()
-      .notEmpty()
-      .withMessage("Material is required")
+      .isLength({ min: 64, max: 64 })
+      .withMessage("Quote token is invalid")
       .bail()
-      .isString()
-      .withMessage("Material must be a string")
-      .bail()
-      .isLength({ min: 1, max: 50 })
-      .withMessage("Material must be between 1 and 50 characters"),
-
-    body("printQuality")
-      .trim()
-      .notEmpty()
-      .withMessage("Print quality is required")
-      .bail()
-      .isIn(PRINT_QUALITY_VALUES)
-      .withMessage("Print quality must be one of: draft, standard, fine"),
-
-    body("infill")
-      .exists()
-      .withMessage("Infill is required")
-      .bail()
-      .isFloat({ min: 0, max: 100 })
-      .withMessage("Infill must be a percentage between 0 and 100"),
-
-    body("quantity")
-      .exists()
-      .withMessage("Quantity is required")
-      .bail()
-      .isInt({ min: 1, max: MAX_PRINT_REQUEST_QUANTITY })
-      .withMessage(
-        `Quantity must be between 1 and ${MAX_PRINT_REQUEST_QUANTITY}`,
-      ),
+      .isHexadecimal()
+      .withMessage("Quote token is invalid"),
 
     body("notes")
       .optional()
@@ -116,141 +63,20 @@ const submitPrintRequestValidator = () => {
         `Notes must not exceed ${MAX_PRINT_REQUEST_NOTES_LENGTH} characters`,
       ),
 
-    body("librarySource")
-      .optional()
-      .trim()
-      .isIn(LIBRARY_SOURCE_VALUES)
-      .withMessage("Library source must be one of: local, myminifactory"),
-
-    body("designId")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("Design ID must be a positive integer"),
-
-    body("mmfObjectId")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("MyMiniFactory object ID must be a positive integer"),
-
-    body("designRequestId")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("Design request ID must be a positive integer"),
-
     body().custom((_, { req }) => {
       rejectForbiddenClientFields(req);
 
-      const sourceType = getSourceType(req);
-
-      if (sourceType === PRINT_REQUEST_SOURCE_TYPES.UPLOAD) {
-        if (!req.file) {
-          throw new Error("Model file is required when source type is upload");
-        }
-
-        if (hasOwnField(req, "designId")) {
-          throw new Error(
-            "Design ID is not allowed when source type is upload",
-          );
-        }
-
-        if (hasOwnField(req, "mmfObjectId")) {
-          throw new Error(
-            "MyMiniFactory object ID is not allowed when source type is upload",
-          );
-        }
-
-        if (hasOwnField(req, "librarySource")) {
-          throw new Error(
-            "Library source is not allowed when source type is upload",
-          );
-        }
-
-        if (hasOwnField(req, "designRequestId")) {
-          throw new Error(
-            "Design request ID is not allowed when source type is upload",
-          );
-        }
+      if (req.file) {
+        throw new Error(
+          "Model file is not allowed when submitting from a quote token",
+        );
       }
 
-      if (sourceType === PRINT_REQUEST_SOURCE_TYPES.LIBRARY) {
-        const librarySource = getLibrarySource(req);
+      const allowedFields = new Set(["quoteToken", "notes"]);
 
-        if (!librarySource) {
-          throw new Error(
-            "Library source is required when source type is library",
-          );
-        }
-
-        if (req.file) {
-          throw new Error(
-            "Model file is not allowed when source type is library",
-          );
-        }
-
-        if (hasOwnField(req, "designRequestId")) {
-          throw new Error(
-            "Design request ID is not allowed when source type is library",
-          );
-        }
-
-        if (librarySource === "local") {
-          if (!hasText(req.body.designId)) {
-            throw new Error(
-              "Design ID is required when library source is local",
-            );
-          }
-
-          if (hasOwnField(req, "mmfObjectId")) {
-            throw new Error(
-              "MyMiniFactory object ID is not allowed when library source is local",
-            );
-          }
-        }
-
-        if (librarySource === "myminifactory") {
-          if (!hasText(req.body.mmfObjectId)) {
-            throw new Error(
-              "MyMiniFactory object ID is required when library source is myminifactory",
-            );
-          }
-
-          if (hasOwnField(req, "designId")) {
-            throw new Error(
-              "Design ID is not allowed when library source is myminifactory",
-            );
-          }
-        }
-      }
-
-      if (sourceType === PRINT_REQUEST_SOURCE_TYPES.DESIGN_REQUEST) {
-        if (!hasText(req.body.designRequestId)) {
-          throw new Error(
-            "Design request ID is required when source type is design_request",
-          );
-        }
-
-        if (req.file) {
-          throw new Error(
-            "Model file is not allowed when source type is design_request",
-          );
-        }
-
-        if (hasOwnField(req, "designId")) {
-          throw new Error(
-            "Design ID is not allowed when source type is design_request",
-          );
-        }
-
-        if (hasOwnField(req, "mmfObjectId")) {
-          throw new Error(
-            "MyMiniFactory object ID is not allowed when source type is design_request",
-          );
-        }
-
-        if (hasOwnField(req, "librarySource")) {
-          throw new Error(
-            "Library source is not allowed when source type is design_request",
-          );
+      for (const field of Object.keys(req.body)) {
+        if (!allowedFields.has(field)) {
+          throw new Error(`${field} is not allowed for quote submission`);
         }
       }
 
@@ -357,15 +183,6 @@ const updatePrintRequestStatusValidator = () => {
       .isFloat({ min: 0 })
       .withMessage("Confirmed cost must be a non-negative number"),
 
-    body("paymentSlipUrl")
-      .optional()
-      .trim()
-      .isString()
-      .withMessage("Payment slip URL must be a string")
-      .bail()
-      .isLength({ max: 500 })
-      .withMessage("Payment slip URL must not exceed 500 characters"),
-
     body("note")
       .optional()
       .trim()
@@ -380,7 +197,6 @@ const updatePrintRequestStatusValidator = () => {
         "status",
         "rejectionReason",
         "confirmedCost",
-        "paymentSlipUrl",
         "note",
       ]);
 
@@ -417,11 +233,50 @@ const uploadPrintRequestReceiptValidator = () => {
   ];
 };
 
+const uploadPrintRequestPaymentSlipValidator = () => {
+  return [
+    ...printRequestIdValidator(),
+
+    body("confirmedCost")
+      .exists()
+      .withMessage("Confirmed cost is required")
+      .bail()
+      .isFloat({ min: 0 })
+      .withMessage("Confirmed cost must be a non-negative number"),
+
+    body("note")
+      .optional()
+      .trim()
+      .isString()
+      .withMessage("Note must be a string")
+      .bail()
+      .isLength({ max: 2000 })
+      .withMessage("Note must not exceed 2000 characters"),
+
+    body().custom((_, { req }) => {
+      if (!req.file) {
+        throw new Error("Payment slip file is required");
+      }
+
+      const allowedFields = new Set(["confirmedCost", "note"]);
+
+      for (const field of Object.keys(req.body)) {
+        if (!allowedFields.has(field)) {
+          throw new Error(`${field} is not allowed for payment slip upload`);
+        }
+      }
+
+      return true;
+    }),
+  ];
+};
+
 export {
   submitPrintRequestValidator,
   printRequestIdValidator,
   listMyPrintRequestsQueryValidator,
   listAllPrintRequestsQueryValidator,
   updatePrintRequestStatusValidator,
+  uploadPrintRequestPaymentSlipValidator,
   uploadPrintRequestReceiptValidator,
 };

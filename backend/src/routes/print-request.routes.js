@@ -6,24 +6,26 @@ import {
   getMyPrintRequestDetail,
   listAllPrintRequests,
   updatePrintRequestStatus,
+  uploadPrintRequestPaymentSlip,
   uploadPrintRequestReceipt,
+  getPrintRequestReceipt,
 } from "../controllers/print-request.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { verifyAdmin } from "../middlewares/role.middleware.js";
 import { validate } from "../middlewares/validator.middleware.js";
 import {
-  printRequestModelUploadMiddleware,
+  printRequestPaymentSlipUploadMiddleware,
   printRequestReceiptUploadMiddleware,
 } from "../middlewares/print-request-upload.middleware.js";
 import {
-  submitPrintRequest,
-  listMyPrintRequests,
-  getMyPrintRequestDetail,
-  listAllPrintRequests,
-  updatePrintRequestStatus,
-  uploadPrintRequestReceipt,
-  getPrintRequestReceipt,
-} from "../controllers/print-request.controller.js";
+  submitPrintRequestValidator,
+  printRequestIdValidator,
+  listMyPrintRequestsQueryValidator,
+  listAllPrintRequestsQueryValidator,
+  updatePrintRequestStatusValidator,
+  uploadPrintRequestPaymentSlipValidator,
+  uploadPrintRequestReceiptValidator,
+} from "../validators/print-request.validator.js";
 
 const printRequestLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -53,10 +55,19 @@ router
   );
 
 router
+  .route("/admin/:requestId/payment-slip")
+  .post(
+    verifyAdmin,
+    printRequestPaymentSlipUploadMiddleware,
+    uploadPrintRequestPaymentSlipValidator(),
+    validate,
+    uploadPrintRequestPaymentSlip,
+  );
+
+router
   .route("/")
   .get(listMyPrintRequestsQueryValidator(), validate, listMyPrintRequests)
   .post(
-    printRequestModelUploadMiddleware,
     submitPrintRequestValidator(),
     validate,
     submitPrintRequest,

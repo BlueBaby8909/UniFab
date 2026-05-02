@@ -1,4 +1,4 @@
-import { body } from "express-validator";
+import { body, param, query } from "express-validator";
 
 const ALLOWED_QUALITIES = ["draft", "standard", "fine"];
 
@@ -39,6 +39,24 @@ const calculateQuoteValidator = () => {
       .bail()
       .isInt({ min: 1 })
       .withMessage("Quantity must be a positive integer"),
+  ];
+};
+
+const calculateLocalDesignQuoteValidator = () => {
+  return [
+    param("designId")
+      .isInt({ min: 1 })
+      .withMessage("Design ID must be a positive integer"),
+    ...calculateQuoteValidator(),
+  ];
+};
+
+const calculateDesignRequestQuoteValidator = () => {
+  return [
+    param("requestId")
+      .isInt({ min: 1 })
+      .withMessage("Design request ID must be a positive integer"),
+    ...calculateQuoteValidator(),
   ];
 };
 
@@ -99,4 +117,35 @@ const updateQuoteValidator = () => {
   ];
 };
 
-export { calculateQuoteValidator, updateQuoteValidator };
+const quoteTokenValidator = () => {
+  return [
+    param("quoteToken")
+      .trim()
+      .notEmpty()
+      .withMessage("Quote token is required")
+      .bail()
+      .isLength({ min: 64, max: 64 })
+      .withMessage("Quote token is invalid")
+      .bail()
+      .isHexadecimal()
+      .withMessage("Quote token is invalid"),
+  ];
+};
+
+const cleanupExpiredQuotesValidator = () => {
+  return [
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 500 })
+      .withMessage("Limit must be between 1 and 500"),
+  ];
+};
+
+export {
+  calculateQuoteValidator,
+  calculateLocalDesignQuoteValidator,
+  calculateDesignRequestQuoteValidator,
+  updateQuoteValidator,
+  quoteTokenValidator,
+  cleanupExpiredQuotesValidator,
+};

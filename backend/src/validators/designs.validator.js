@@ -246,6 +246,13 @@ const createDesignOverrideValidator = () => {
       .isIn(["true", "false", "1", "0", "yes", "no"])
       .withMessage("isPinned must be one of: true, false, 1, 0, yes, no"),
 
+    body("isPrintReady")
+      .optional()
+      .isIn(["true", "false", "1", "0", "yes", "no"])
+      .withMessage(
+        "isPrintReady must be one of: true, false, 1, 0, yes, no",
+      ),
+
     body("clientNote")
       .optional()
       .trim()
@@ -267,11 +274,16 @@ const createDesignOverrideValidator = () => {
             .trim()
             .toLowerCase(),
         ) ||
+        ["true", "1", "yes"].includes(
+          String(req.body.isPrintReady ?? "")
+            .trim()
+            .toLowerCase(),
+        ) ||
         hasText(req.body.clientNote);
 
       if (!hasMeaningfulOverride) {
         throw new Error(
-          "At least one meaningful override is required: isHidden=true, isPinned=true, or a non-empty clientNote",
+          "At least one meaningful override is required: isHidden=true, isPinned=true, isPrintReady=true, or a non-empty clientNote",
         );
       }
 
@@ -294,6 +306,13 @@ const updateDesignOverrideValidator = () => {
       .isIn(["true", "false", "1", "0", "yes", "no"])
       .withMessage("isPinned must be one of: true, false, 1, 0, yes, no"),
 
+    body("isPrintReady")
+      .optional()
+      .isIn(["true", "false", "1", "0", "yes", "no"])
+      .withMessage(
+        "isPrintReady must be one of: true, false, 1, 0, yes, no",
+      ),
+
     body("clientNote")
       .optional()
       .trim()
@@ -307,11 +326,12 @@ const updateDesignOverrideValidator = () => {
       const hasAnyUpdatableField =
         Object.prototype.hasOwnProperty.call(req.body, "isHidden") ||
         Object.prototype.hasOwnProperty.call(req.body, "isPinned") ||
+        Object.prototype.hasOwnProperty.call(req.body, "isPrintReady") ||
         Object.prototype.hasOwnProperty.call(req.body, "clientNote");
 
       if (!hasAnyUpdatableField) {
         throw new Error(
-          "At least one override field must be provided: isHidden, isPinned, or clientNote",
+          "At least one override field must be provided: isHidden, isPinned, isPrintReady, or clientNote",
         );
       }
 

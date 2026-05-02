@@ -1,2 +1,19 @@
 node_modules
 .env
+
+# Runtime logs and local process output
+*.log
+
+# Local database backups can contain user/test data.
+db/backups/
+
+# Runtime uploads and generated slicing output
+temp/
+storage/print-requests/
+storage/design-requests/references/
+storage/slicer-profiles/incoming/
+
+# Admin-uploaded local designs are runtime data. Existing tracked sample assets
+# remain tracked, but new uploads should not be committed by accident.
+storage/local-designs/files/*
+storage/local-designs/thumbnails/*

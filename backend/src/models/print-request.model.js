@@ -27,6 +27,8 @@ async function createPrintRequest(payload, connection = null) {
       file_mime_type,
       file_size,
       design_snapshot,
+      quote_token,
+      quote_snapshot,
       material,
       print_quality,
       infill,
@@ -43,7 +45,7 @@ async function createPrintRequest(payload, connection = null) {
       status,
       rejection_reason
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const [result] = await executor.query(sql, [
@@ -57,6 +59,8 @@ async function createPrintRequest(payload, connection = null) {
     payload.fileMimeType ?? null,
     payload.fileSize ?? null,
     serializeJson(payload.designSnapshot),
+    payload.quoteToken ?? null,
+    serializeJson(payload.quoteSnapshot),
     payload.material,
     payload.printQuality,
     payload.infill,
@@ -93,6 +97,8 @@ async function getPrintRequestById(requestId, connection = null) {
       file_mime_type,
       file_size,
       design_snapshot,
+      quote_token,
+      quote_snapshot,
       material,
       print_quality,
       infill,
@@ -139,6 +145,8 @@ async function getPrintRequestByIdForOwner(
       file_mime_type,
       file_size,
       design_snapshot,
+      quote_token,
+      quote_snapshot,
       material,
       print_quality,
       infill,
@@ -200,6 +208,8 @@ async function getPaginatedPrintRequestsByOwner(
       file_mime_type,
       file_size,
       design_snapshot,
+      quote_token,
+      quote_snapshot,
       material,
       print_quality,
       infill,
@@ -279,6 +289,8 @@ async function getPaginatedAllPrintRequests({
       file_mime_type,
       file_size,
       design_snapshot,
+      quote_token,
+      quote_snapshot,
       material,
       print_quality,
       infill,

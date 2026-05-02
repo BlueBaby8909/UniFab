@@ -7,14 +7,17 @@ import {
   listAllDesignRequests,
   getDesignRequestDetailForAdmin,
   updateDesignRequestStatus,
+  updateDesignRequestResult,
 } from "../controllers/design-requests.controller.js";
 import { validate } from "../middlewares/validator.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { verifyAdmin } from "../middlewares/role.middleware.js";
+import { designRequestReferenceUploadMiddleware } from "../middlewares/design-request-upload.middleware.js";
 import {
   designRequestIdValidator,
   createDesignRequestValidator,
   updateDesignRequestStatusValidator,
+  updateDesignRequestResultValidator,
   listMyDesignRequestsQueryValidator,
   listAllDesignRequestsQueryValidator,
 } from "../validators/design-requests.validator.js";
@@ -30,7 +33,12 @@ router.use(designRequestLimiter, verifyJWT);
 
 router
   .route("/")
-  .post(createDesignRequestValidator(), validate, createDesignRequest);
+  .post(
+    designRequestReferenceUploadMiddleware,
+    createDesignRequestValidator(),
+    validate,
+    createDesignRequest,
+  );
 
 router
   .route("/mine")
@@ -65,6 +73,15 @@ router
     updateDesignRequestStatusValidator(),
     validate,
     updateDesignRequestStatus,
+  );
+
+router
+  .route("/admin/:requestId/result")
+  .patch(
+    verifyAdmin,
+    updateDesignRequestResultValidator(),
+    validate,
+    updateDesignRequestResult,
   );
 
 export default router;

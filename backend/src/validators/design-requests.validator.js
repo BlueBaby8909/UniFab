@@ -1,7 +1,16 @@
 import { body, param, query } from "express-validator";
+import { DESIGN_REQUEST_REFERENCE_UPLOAD_FIELD } from "../middlewares/design-request-upload.middleware.js";
 
 function hasText(value) {
   return value !== undefined && value !== null && String(value).trim() !== "";
+}
+
+function rejectFields(req, allowedFields, actionName) {
+  for (const field of Object.keys(req.body)) {
+    if (!allowedFields.has(field)) {
+      throw new Error(`${field} is not allowed for ${actionName}`);
+    }
+  }
 }
 
 const DESIGN_REQUEST_STATUS_VALUES = [
@@ -66,6 +75,23 @@ const createDesignRequestValidator = () => {
       .optional()
       .isInt({ min: 1 })
       .withMessage("Quantity must be a positive integer"),
+
+    body().custom((_, { req }) => {
+      rejectFields(
+        req,
+        new Set([
+          "title",
+          "description",
+          "preferredMaterial",
+          "dimensions",
+          "quantity",
+          DESIGN_REQUEST_REFERENCE_UPLOAD_FIELD,
+        ]),
+        "design request creation",
+      );
+
+      return true;
+    }),
   ];
 };
 
@@ -91,6 +117,12 @@ const updateDesignRequestStatusValidator = () => {
       .withMessage("Admin note must not exceed 2000 characters"),
 
     body().custom((_, { req }) => {
+      rejectFields(
+        req,
+        new Set(["status", "adminNote"]),
+        "design request status updates",
+      );
+
       const hasAnyUpdatableField =
         Object.prototype.hasOwnProperty.call(req.body, "status") ||
         Object.prototype.hasOwnProperty.call(req.body, "adminNote");
@@ -100,6 +132,40 @@ const updateDesignRequestStatusValidator = () => {
           "At least one update field must be provided: status or adminNote",
         );
       }
+
+      return true;
+    }),
+  ];
+};
+
+const updateDesignRequestResultValidator = () => {
+  return [
+    ...designRequestIdValidator(),
+
+    body("resultDesignId")
+      .exists()
+      .withMessage("Result design ID is required")
+      .bail()
+      .isInt({ min: 1 })
+      .withMessage("Result design ID must be a positive integer"),
+
+    body("adminNote")
+      .trim()
+      .notEmpty()
+      .withMessage("Admin note is required")
+      .bail()
+      .isString()
+      .withMessage("Admin note must be a string")
+      .bail()
+      .isLength({ max: 2000 })
+      .withMessage("Admin note must not exceed 2000 characters"),
+
+    body().custom((_, { req }) => {
+      rejectFields(
+        req,
+        new Set(["resultDesignId", "adminNote"]),
+        "design request result linking",
+      );
 
       return true;
     }),
@@ -146,6 +212,7 @@ export {
   designRequestIdValidator,
   createDesignRequestValidator,
   updateDesignRequestStatusValidator,
+  updateDesignRequestResultValidator,
   listMyDesignRequestsQueryValidator,
   listAllDesignRequestsQueryValidator,
   DESIGN_REQUEST_STATUS_VALUES,

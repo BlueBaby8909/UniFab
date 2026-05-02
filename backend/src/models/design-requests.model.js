@@ -7,6 +7,7 @@ async function createDesignRequest({
   preferredMaterial,
   dimensions,
   quantity,
+  referenceFiles,
   status = "pending",
 }) {
   const sql = `
@@ -17,9 +18,10 @@ async function createDesignRequest({
       preferred_material,
       dimensions,
       quantity,
+      reference_files,
       status
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const [result] = await pool.query(sql, [
@@ -29,6 +31,9 @@ async function createDesignRequest({
     preferredMaterial,
     dimensions,
     quantity,
+    referenceFiles === undefined || referenceFiles === null
+      ? null
+      : JSON.stringify(referenceFiles),
     status,
   ]);
 
@@ -45,6 +50,8 @@ async function getDesignRequestById(requestId) {
       preferred_material,
       dimensions,
       quantity,
+      reference_files,
+      result_design_id,
       status,
       admin_note,
       created_at,
@@ -68,6 +75,8 @@ async function getDesignRequestByIdForOwner(requestId, userId) {
       preferred_material,
       dimensions,
       quantity,
+      reference_files,
+      result_design_id,
       status,
       admin_note,
       created_at,
@@ -91,6 +100,8 @@ async function getDesignRequestsByOwner(userId) {
       preferred_material,
       dimensions,
       quantity,
+      reference_files,
+      result_design_id,
       status,
       admin_note,
       created_at,
@@ -114,6 +125,8 @@ async function getAllDesignRequests() {
       preferred_material,
       dimensions,
       quantity,
+      reference_files,
+      result_design_id,
       status,
       admin_note,
       created_at,
@@ -148,6 +161,30 @@ async function updateDesignRequestStatusById(requestId, payload) {
   return getDesignRequestById(requestId);
 }
 
+async function updateDesignRequestResultById(requestId, payload) {
+  const sql = `
+    UPDATE design_requests
+    SET
+      result_design_id = ?,
+      status = ?,
+      admin_note = ?
+    WHERE id = ?
+  `;
+
+  const [result] = await pool.query(sql, [
+    payload.resultDesignId,
+    payload.status,
+    payload.adminNote,
+    requestId,
+  ]);
+
+  if (result.affectedRows === 0) {
+    return null;
+  }
+
+  return getDesignRequestById(requestId);
+}
+
 async function getPaginatedDesignRequestsByOwner(
   userId,
   { page = 1, limit = 20 },
@@ -169,6 +206,8 @@ async function getPaginatedDesignRequestsByOwner(
       preferred_material,
       dimensions,
       quantity,
+      reference_files,
+      result_design_id,
       status,
       admin_note,
       created_at,
@@ -225,6 +264,8 @@ async function getPaginatedAllDesignRequests({
       preferred_material,
       dimensions,
       quantity,
+      reference_files,
+      result_design_id,
       status,
       admin_note,
       created_at,
@@ -257,4 +298,5 @@ export {
   getAllDesignRequests,
   getPaginatedAllDesignRequests,
   updateDesignRequestStatusById,
+  updateDesignRequestResultById,
 };

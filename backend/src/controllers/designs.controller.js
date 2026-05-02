@@ -58,9 +58,15 @@ function applyOverrideToMmfItem(item, override) {
           id: override.id,
           isHidden: Boolean(override.is_hidden),
           isPinned: Boolean(override.is_pinned),
+          isPrintReady: Boolean(override.is_print_ready),
           clientNote: override.client_note || null,
         }
-      : null,
+      : {
+          isHidden: false,
+          isPinned: false,
+          isPrintReady: false,
+          clientNote: null,
+        },
   };
 }
 
@@ -162,6 +168,7 @@ function normalizeDesignOverride(designOverride) {
     mmfObjectId: designOverride.mmf_object_id,
     isHidden: Boolean(designOverride.is_hidden),
     isPinned: Boolean(designOverride.is_pinned),
+    isPrintReady: Boolean(designOverride.is_print_ready),
     clientNote: designOverride.client_note,
     createdBy: designOverride.created_by,
     updatedBy: designOverride.updated_by,
@@ -534,6 +541,8 @@ const createDesignOverride = asyncHandler(async (req, res) => {
     mmfObjectId,
     isHidden: parseOptionalBoolean(req.body.isHidden, "isHidden") ?? false,
     isPinned: parseOptionalBoolean(req.body.isPinned, "isPinned") ?? false,
+    isPrintReady:
+      parseOptionalBoolean(req.body.isPrintReady, "isPrintReady") ?? false,
     clientNote: normalizeOptionalText(req.body.clientNote),
     createdBy: req.user.id,
     updatedBy: req.user.id,
@@ -565,6 +574,9 @@ const updateDesignOverride = asyncHandler(async (req, res) => {
     isPinned:
       parseOptionalBoolean(req.body.isPinned, "isPinned") ??
       Boolean(existingOverride.is_pinned),
+    isPrintReady:
+      parseOptionalBoolean(req.body.isPrintReady, "isPrintReady") ??
+      Boolean(existingOverride.is_print_ready),
     clientNote: Object.prototype.hasOwnProperty.call(req.body, "clientNote")
       ? normalizeOptionalText(req.body.clientNote)
       : existingOverride.client_note,
