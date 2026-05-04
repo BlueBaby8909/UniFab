@@ -7,11 +7,15 @@ import {
 } from "../services/myminifactory.service.js";
 import {
   getActiveLocalDesigns,
+  getAllLocalDesignsForAdmin,
   getLocalDesignById,
   getLocalDesignByIdForAdmin,
   createLocalDesign as createLocalDesignRecord,
   updateLocalDesignById,
   deactivateLocalDesignById,
+  archiveLocalDesignById,
+  countLocalDesignReferences,
+  deleteLocalDesignById,
 } from "../models/local-design.model.js";
 import {
   getAllDesignOverrides,
@@ -153,6 +157,8 @@ function normalizeLocalDesign(localDesign) {
     licenseType: localDesign.license_type,
     isActive: Boolean(localDesign.is_active),
     uploadedBy: localDesign.uploaded_by,
+    archivedAt: localDesign.archived_at,
+    archivedBy: localDesign.archived_by,
     createdAt: localDesign.created_at,
     updatedAt: localDesign.updated_at,
   };
@@ -317,6 +323,30 @@ const listLocalDesigns = asyncHandler(async (req, res) => {
     );
 });
 
+const listLocalDesignsForAdmin = asyncHandler(async (req, res) => {
+  const archived = ["true", "1", "yes"].includes(
+    String(req.query.archived ?? "")
+      .trim()
+      .toLowerCase(),
+  );
+
+  const localDesigns = (
+    await getAllLocalDesignsForAdmin({
+      archived,
+    })
+  ).map(normalizeLocalDesign);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { localDesigns },
+        "Admin local designs fetched successfully",
+      ),
+    );
+});
+
 const getLocalDesignDetail = asyncHandler(async (req, res) => {
   const localDesign = await getLocalDesignById(req.params.designId);
 
@@ -331,6 +361,24 @@ const getLocalDesignDetail = asyncHandler(async (req, res) => {
         200,
         { localDesign: normalizeLocalDesign(localDesign) },
         "Local design fetched successfully",
+      ),
+    );
+});
+
+const getLocalDesignDetailForAdmin = asyncHandler(async (req, res) => {
+  const localDesign = await getLocalDesignByIdForAdmin(req.params.designId);
+
+  if (!localDesign) {
+    throw new ApiError(404, "Local design not found");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { localDesign: normalizeLocalDesign(localDesign) },
+        "Admin local design fetched successfully",
       ),
     );
 });
@@ -393,6 +441,11 @@ const updateLocalDesign = asyncHandler(async (req, res) => {
   if (!existingLocalDesign) {
     await cleanupNewUploadedLocalDesignAssets(req);
     throw new ApiError(404, "Local design not found");
+  }
+
+  if (existingLocalDesign.archived_at) {
+    await cleanupNewUploadedLocalDesignAssets(req);
+    throw new ApiError(400, "Archived local designs cannot be updated");
   }
 
   const uploadedDesignFile = getUploadedFile(
@@ -509,6 +562,85 @@ const deactivateLocalDesign = asyncHandler(async (req, res) => {
     );
 });
 
+const archiveLocalDesign = asyncHandler(async (req, res) => {
+  const existingLocalDesign = await getLocalDesignByIdForAdmin(
+    req.params.designId,
+  );
+
+  if (!existingLocalDesign) {
+    throw new ApiError(404, "Local design not found");
+  }
+
+  if (existingLocalDesign.archived_at) {
+    throw new ApiError(400, "Local design is already archived");
+  }
+
+  if (existingLocalDesign.is_active) {
+    throw new ApiError(400, "Only unavailable local designs can be archived");
+  }
+
+  const localDesign = await archiveLocalDesignById(
+    req.params.designId,
+    req.user.id,
+  );
+
+  if (!localDesign) {
+    throw new ApiError(404, "Local design not found");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { localDesign: normalizeLocalDesign(localDesign) },
+        "Local design archived successfully",
+      ),
+    );
+});
+
+const deleteLocalDesign = asyncHandler(async (req, res) => {
+  const existingLocalDesign = await getLocalDesignByIdForAdmin(
+    req.params.designId,
+  );
+
+  if (!existingLocalDesign) {
+    throw new ApiError(404, "Local design not found");
+  }
+
+  if (!existingLocalDesign.archived_at) {
+    throw new ApiError(400, "Only archived local designs can be deleted");
+  }
+
+  if (existingLocalDesign.is_active) {
+    throw new ApiError(400, "Only unavailable local designs can be deleted");
+  }
+
+  const references = await countLocalDesignReferences(req.params.designId);
+
+  if (references.printRequestCount > 0 || references.designRequestCount > 0) {
+    throw new ApiError(
+      409,
+      "Local design cannot be deleted while print requests or design requests still reference it",
+    );
+  }
+
+  const deleted = await deleteLocalDesignById(req.params.designId);
+
+  if (!deleted) {
+    throw new ApiError(404, "Local design not found");
+  }
+
+  await Promise.all([
+    removeManagedLocalDesignFile(existingLocalDesign.file_url, "design"),
+    removeManagedLocalDesignFile(existingLocalDesign.thumbnail_url, "thumbnail"),
+  ]);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Local design deleted successfully"));
+});
+
 const listDesignOverrides = asyncHandler(async (req, res) => {
   const designOverrides = (await getAllDesignOverrides()).map(
     normalizeDesignOverride,
@@ -614,10 +746,14 @@ export {
   searchDesignLibrary,
   getMmfDesignDetail,
   listLocalDesigns,
+  listLocalDesignsForAdmin,
   getLocalDesignDetail,
+  getLocalDesignDetailForAdmin,
   createLocalDesign,
   updateLocalDesign,
   deactivateLocalDesign,
+  archiveLocalDesign,
+  deleteLocalDesign,
   listDesignOverrides,
   createDesignOverride,
   updateDesignOverride,

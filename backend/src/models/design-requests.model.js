@@ -54,6 +54,8 @@ async function getDesignRequestById(requestId) {
       result_design_id,
       status,
       admin_note,
+      archived_at,
+      archived_by,
       created_at,
       updated_at
     FROM design_requests
@@ -79,10 +81,12 @@ async function getDesignRequestByIdForOwner(requestId, userId) {
       result_design_id,
       status,
       admin_note,
+      archived_at,
+      archived_by,
       created_at,
       updated_at
     FROM design_requests
-    WHERE id = ? AND requested_by = ?
+    WHERE id = ? AND requested_by = ? AND archived_at IS NULL
     LIMIT 1
   `;
 
@@ -104,10 +108,12 @@ async function getDesignRequestsByOwner(userId) {
       result_design_id,
       status,
       admin_note,
+      archived_at,
+      archived_by,
       created_at,
       updated_at
     FROM design_requests
-    WHERE requested_by = ?
+    WHERE requested_by = ? AND archived_at IS NULL
     ORDER BY created_at DESC, id DESC
   `;
 
@@ -129,6 +135,8 @@ async function getAllDesignRequests() {
       result_design_id,
       status,
       admin_note,
+      archived_at,
+      archived_by,
       created_at,
       updated_at
     FROM design_requests
@@ -194,7 +202,7 @@ async function getPaginatedDesignRequestsByOwner(
   const countSql = `
     SELECT COUNT(*) AS total_count
     FROM design_requests
-    WHERE requested_by = ?
+    WHERE requested_by = ? AND archived_at IS NULL
   `;
 
   const dataSql = `
@@ -210,10 +218,12 @@ async function getPaginatedDesignRequestsByOwner(
       result_design_id,
       status,
       admin_note,
+      archived_at,
+      archived_by,
       created_at,
       updated_at
     FROM design_requests
-    WHERE requested_by = ?
+    WHERE requested_by = ? AND archived_at IS NULL
     ORDER BY created_at DESC, id DESC
     LIMIT ? OFFSET ?
   `;
@@ -235,10 +245,11 @@ async function getPaginatedAllDesignRequests({
   page = 1,
   limit = 20,
   status = null,
+  archived = false,
 }) {
   const offset = (page - 1) * limit;
 
-  const whereClauses = [];
+  const whereClauses = [archived ? "archived_at IS NOT NULL" : "archived_at IS NULL"];
   const params = [];
 
   if (status) {
@@ -268,6 +279,8 @@ async function getPaginatedAllDesignRequests({
       result_design_id,
       status,
       admin_note,
+      archived_at,
+      archived_by,
       created_at,
       updated_at
     FROM design_requests
@@ -289,6 +302,45 @@ async function getPaginatedAllDesignRequests({
   };
 }
 
+async function archiveDesignRequestById(requestId, archivedBy) {
+  const sql = `
+    UPDATE design_requests
+    SET
+      archived_at = NOW(),
+      archived_by = ?
+    WHERE id = ? AND archived_at IS NULL
+  `;
+
+  const [result] = await pool.query(sql, [archivedBy, requestId]);
+
+  if (result.affectedRows === 0) {
+    return null;
+  }
+
+  return getDesignRequestById(requestId);
+}
+
+async function countPrintRequestsByDesignRequestId(requestId) {
+  const sql = `
+    SELECT COUNT(*) AS total_count
+    FROM print_requests
+    WHERE design_request_id = ?
+  `;
+
+  const [rows] = await pool.query(sql, [requestId]);
+  return Number(rows[0]?.total_count || 0);
+}
+
+async function deleteDesignRequestById(requestId) {
+  const sql = `
+    DELETE FROM design_requests
+    WHERE id = ?
+  `;
+
+  const [result] = await pool.query(sql, [requestId]);
+  return result.affectedRows > 0;
+}
+
 export {
   createDesignRequest,
   getDesignRequestById,
@@ -299,4 +351,7 @@ export {
   getPaginatedAllDesignRequests,
   updateDesignRequestStatusById,
   updateDesignRequestResultById,
+  archiveDesignRequestById,
+  countPrintRequestsByDesignRequestId,
+  deleteDesignRequestById,
 };

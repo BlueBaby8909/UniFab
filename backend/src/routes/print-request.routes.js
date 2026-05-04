@@ -1,11 +1,12 @@
 import express from "express";
-import rateLimit from "express-rate-limit";
 import {
   submitPrintRequest,
   listMyPrintRequests,
   getMyPrintRequestDetail,
   listAllPrintRequests,
   updatePrintRequestStatus,
+  archivePrintRequest,
+  deletePrintRequest,
   uploadPrintRequestPaymentSlip,
   uploadPrintRequestReceipt,
   getPrintRequestReceipt,
@@ -26,19 +27,20 @@ import {
   uploadPrintRequestPaymentSlipValidator,
   uploadPrintRequestReceiptValidator,
 } from "../validators/print-request.validator.js";
-
-const printRequestLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-});
+import {
+  authenticatedReadRateLimiter,
+  uploadRateLimiter,
+  writeRateLimiter,
+} from "../middlewares/rate-limit.middleware.js";
 
 const router = express.Router();
 
-router.use(printRequestLimiter, verifyJWT);
+router.use(verifyJWT);
 
 router
   .route("/admin")
   .get(
+    authenticatedReadRateLimiter,
     verifyAdmin,
     listAllPrintRequestsQueryValidator(),
     validate,
@@ -46,8 +48,19 @@ router
   );
 
 router
+  .route("/admin/:requestId")
+  .delete(
+    writeRateLimiter,
+    verifyAdmin,
+    printRequestIdValidator(),
+    validate,
+    deletePrintRequest,
+  );
+
+router
   .route("/admin/:requestId/status")
   .put(
+    writeRateLimiter,
     verifyAdmin,
     updatePrintRequestStatusValidator(),
     validate,
@@ -55,8 +68,19 @@ router
   );
 
 router
+  .route("/admin/:requestId/archive")
+  .patch(
+    writeRateLimiter,
+    verifyAdmin,
+    printRequestIdValidator(),
+    validate,
+    archivePrintRequest,
+  );
+
+router
   .route("/admin/:requestId/payment-slip")
   .post(
+    uploadRateLimiter,
     verifyAdmin,
     printRequestPaymentSlipUploadMiddleware,
     uploadPrintRequestPaymentSlipValidator(),
@@ -66,8 +90,14 @@ router
 
 router
   .route("/")
-  .get(listMyPrintRequestsQueryValidator(), validate, listMyPrintRequests)
+  .get(
+    authenticatedReadRateLimiter,
+    listMyPrintRequestsQueryValidator(),
+    validate,
+    listMyPrintRequests,
+  )
   .post(
+    writeRateLimiter,
     submitPrintRequestValidator(),
     validate,
     submitPrintRequest,
@@ -75,8 +105,14 @@ router
 
 router
   .route("/:requestId/receipt")
-  .get(printRequestIdValidator(), validate, getPrintRequestReceipt)
+  .get(
+    authenticatedReadRateLimiter,
+    printRequestIdValidator(),
+    validate,
+    getPrintRequestReceipt,
+  )
   .post(
+    uploadRateLimiter,
     printRequestReceiptUploadMiddleware,
     uploadPrintRequestReceiptValidator(),
     validate,
@@ -85,6 +121,11 @@ router
 
 router
   .route("/:requestId")
-  .get(printRequestIdValidator(), validate, getMyPrintRequestDetail);
+  .get(
+    authenticatedReadRateLimiter,
+    printRequestIdValidator(),
+    validate,
+    getMyPrintRequestDetail,
+  );
 
 export default router;

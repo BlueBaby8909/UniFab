@@ -114,6 +114,8 @@ async function getPrintRequestById(requestId, connection = null) {
       receipt_uploaded_at,
       status,
       rejection_reason,
+      archived_at,
+      archived_by,
       created_at,
       updated_at
     FROM print_requests
@@ -162,10 +164,12 @@ async function getPrintRequestByIdForOwner(
       receipt_uploaded_at,
       status,
       rejection_reason,
+      archived_at,
+      archived_by,
       created_at,
       updated_at
     FROM print_requests
-    WHERE id = ? AND client_id = ?
+    WHERE id = ? AND client_id = ? AND archived_at IS NULL
     LIMIT 1
   `;
 
@@ -179,7 +183,7 @@ async function getPaginatedPrintRequestsByOwner(
 ) {
   const offset = (page - 1) * limit;
 
-  const whereClauses = ["client_id = ?"];
+  const whereClauses = ["client_id = ?", "archived_at IS NULL"];
   const params = [clientId];
 
   if (status) {
@@ -225,6 +229,8 @@ async function getPaginatedPrintRequestsByOwner(
       receipt_uploaded_at,
       status,
       rejection_reason,
+      archived_at,
+      archived_by,
       created_at,
       updated_at
     FROM print_requests
@@ -251,10 +257,11 @@ async function getPaginatedAllPrintRequests({
   limit = 20,
   status = null,
   sourceType = null,
+  archived = false,
 } = {}) {
   const offset = (page - 1) * limit;
 
-  const whereClauses = [];
+  const whereClauses = [archived ? "archived_at IS NOT NULL" : "archived_at IS NULL"];
   const params = [];
 
   if (status) {
@@ -306,6 +313,8 @@ async function getPaginatedAllPrintRequests({
       receipt_uploaded_at,
       status,
       rejection_reason,
+      archived_at,
+      archived_by,
       created_at,
       updated_at
     FROM print_requests
@@ -464,6 +473,34 @@ async function attachReceiptToPrintRequest(
   return getPrintRequestById(requestId, connection);
 }
 
+async function archivePrintRequestById(requestId, archivedBy) {
+  const sql = `
+    UPDATE print_requests
+    SET
+      archived_at = NOW(),
+      archived_by = ?
+    WHERE id = ? AND archived_at IS NULL
+  `;
+
+  const [result] = await pool.query(sql, [archivedBy, requestId]);
+
+  if (result.affectedRows === 0) {
+    return null;
+  }
+
+  return getPrintRequestById(requestId);
+}
+
+async function deletePrintRequestById(requestId) {
+  const sql = `
+    DELETE FROM print_requests
+    WHERE id = ?
+  `;
+
+  const [result] = await pool.query(sql, [requestId]);
+  return result.affectedRows > 0;
+}
+
 export {
   createPrintRequest,
   getPrintRequestById,
@@ -471,6 +508,8 @@ export {
   getPaginatedPrintRequestsByOwner,
   getPaginatedAllPrintRequests,
   updatePrintRequestStatusById,
+  archivePrintRequestById,
+  deletePrintRequestById,
   attachReceiptToPrintRequest,
   createPrintRequestStatusHistory,
   getPrintRequestStatusHistoryById,

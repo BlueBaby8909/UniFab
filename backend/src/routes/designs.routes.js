@@ -1,13 +1,16 @@
 import express from "express";
-import rateLimit from "express-rate-limit";
 import {
   searchDesignLibrary,
   getMmfDesignDetail,
   listLocalDesigns,
+  listLocalDesignsForAdmin,
   getLocalDesignDetail,
+  getLocalDesignDetailForAdmin,
   createLocalDesign,
   updateLocalDesign,
   deactivateLocalDesign,
+  archiveLocalDesign,
+  deleteLocalDesign,
   listDesignOverrides,
   createDesignOverride,
   updateDesignOverride,
@@ -28,18 +31,19 @@ import {
   createDesignOverrideValidator,
   updateDesignOverrideValidator,
 } from "../validators/designs.validator.js";
-
-const designLibraryLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
-});
+import {
+  authenticatedReadRateLimiter,
+  publicReadRateLimiter,
+  uploadRateLimiter,
+  writeRateLimiter,
+} from "../middlewares/rate-limit.middleware.js";
 
 const router = express.Router();
 
 router
   .route("/")
   .get(
-    designLibraryLimiter,
+    publicReadRateLimiter,
     searchDesignLibraryValidator(),
     validate,
     searchDesignLibrary,
@@ -48,24 +52,52 @@ router
 router
   .route("/mmf/:objectId")
   .get(
-    designLibraryLimiter,
+    publicReadRateLimiter,
     mmfObjectIdValidator(),
     validate,
     getMmfDesignDetail,
   );
 
-router.route("/local").get(designLibraryLimiter, listLocalDesigns);
+router.route("/local").get(publicReadRateLimiter, listLocalDesigns);
+
+router
+  .route("/admin/local")
+  .get(
+    authenticatedReadRateLimiter,
+    verifyJWT,
+    verifyAdmin,
+    listLocalDesignsForAdmin,
+  );
+
+router
+  .route("/admin/local/:designId")
+  .get(
+    authenticatedReadRateLimiter,
+    verifyJWT,
+    verifyAdmin,
+    localDesignIdValidator(),
+    validate,
+    getLocalDesignDetailForAdmin,
+  )
+  .delete(
+    writeRateLimiter,
+    verifyJWT,
+    verifyAdmin,
+    localDesignIdValidator(),
+    validate,
+    deleteLocalDesign,
+  );
 
 router
   .route("/local/:designId")
   .get(
-    designLibraryLimiter,
+    publicReadRateLimiter,
     localDesignIdValidator(),
     validate,
     getLocalDesignDetail,
   )
   .patch(
-    designLibraryLimiter,
+    uploadRateLimiter,
     verifyJWT,
     verifyAdmin,
     localDesignUploadMiddleware,
@@ -77,7 +109,7 @@ router
 router
   .route("/local")
   .post(
-    designLibraryLimiter,
+    uploadRateLimiter,
     verifyJWT,
     verifyAdmin,
     localDesignUploadMiddleware,
@@ -89,7 +121,7 @@ router
 router
   .route("/local/:designId/deactivate")
   .patch(
-    designLibraryLimiter,
+    writeRateLimiter,
     verifyJWT,
     verifyAdmin,
     deactivateLocalDesignValidator(),
@@ -98,10 +130,26 @@ router
   );
 
 router
+  .route("/admin/local/:designId/archive")
+  .patch(
+    writeRateLimiter,
+    verifyJWT,
+    verifyAdmin,
+    localDesignIdValidator(),
+    validate,
+    archiveLocalDesign,
+  );
+
+router
   .route("/admin/overrides")
-  .get(designLibraryLimiter, verifyJWT, verifyAdmin, listDesignOverrides)
+  .get(
+    authenticatedReadRateLimiter,
+    verifyJWT,
+    verifyAdmin,
+    listDesignOverrides,
+  )
   .post(
-    designLibraryLimiter,
+    writeRateLimiter,
     verifyJWT,
     verifyAdmin,
     createDesignOverrideValidator(),
@@ -112,7 +160,7 @@ router
 router
   .route("/admin/overrides/:overrideId")
   .patch(
-    designLibraryLimiter,
+    writeRateLimiter,
     verifyJWT,
     verifyAdmin,
     updateDesignOverrideValidator(),
@@ -120,7 +168,7 @@ router
     updateDesignOverride,
   )
   .delete(
-    designLibraryLimiter,
+    writeRateLimiter,
     verifyJWT,
     verifyAdmin,
     overrideIdValidator(),

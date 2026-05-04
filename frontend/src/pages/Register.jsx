@@ -1,77 +1,141 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { registerUser } from "../api/auth";
+import { Button } from "../components/ui/Button";
+import { Alert } from "../components/ui/Feedback";
+import { Field, SelectInput, TextInput } from "../components/ui/Form";
+import { PageHeader, PageShell, Panel } from "../components/ui/Page";
 
 export default function Register() {
-    return(
-        <main className="bg-white min-h-screen relative overflow-hidden flex items-center justify-center py-20 px-6">
-            <div className="gdg-dot-grid absolute inset-0 -z-10 opacity-10"></div>
-            
-            <div className="sticker-card bg-white w-full max-w-2xl p-10 relative transform rotate-1">
-                <div className="absolute -top-8 -left-8 w-24 h-24 bg-gdg-green border-[3px] border-black rounded-xl flex items-center justify-center font-black text-white text-4xl -rotate-12 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">UF</div>
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    userType: "student",
+  });
 
-                <div className="text-center mb-10">
-                    <div className="die-cut inline-block mb-4">
-                        <div className="bg-gdg-yellow border-[2px] border-black px-4 py-1 font-black text-[10px] text-black uppercase tracking-widest">
-                            MEMBERSHIP APPLICATION
-                        </div>
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter">Join the Lab</h1>
-                </div>
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-                <form onSubmit={(e) => e.preventDefault()} className="space-y-8">
-                    <div className="grid md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="input-label">First Name</label>
-                            <input type="text" placeholder="Juan" className="industrial-input" required />
-                        </div>
-                        <div>
-                            <label className="input-label">Last Name</label>
-                            <input type="text" placeholder="Dela Cruz" className="industrial-input" required />
-                        </div>
-                    </div>
+  const updateField = (field, value) => {
+    setForm((currentForm) => ({
+      ...currentForm,
+      [field]: value,
+    }));
+  };
 
-                    <div className="grid md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="input-label">Campus Email</label>
-                            <input type="email" placeholder="juan.dc@ustp.edu.ph" className="industrial-input" required />
-                        </div>
-                        <div>
-                            <label className="input-label">Department / Role</label>
-                            <select className="industrial-input appearance-none" required>
-                                <option value="">Select Role</option>
-                                <option value="student">Student</option>
-                                <option value="researcher">Researcher</option>
-                                <option value="faculty">Faculty</option>
-                            </select>
-                        </div>
-                    </div>
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
-                    <div className="grid md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="input-label">Password</label>
-                            <input type="password" placeholder="••••••••" className="industrial-input" required />
-                        </div>
-                        <div>
-                            <label className="input-label">Confirm Password</label>
-                            <input type="password" placeholder="••••••••" className="industrial-input" required />
-                        </div>
-                    </div>
+    try {
+      setIsSubmitting(true);
+      setError("");
+      setSuccessMessage("");
 
-                    <div className="flex items-center gap-4 p-4 bg-slate-50 border-[3px] border-black rounded-xl">
-                        <input type="checkbox" className="w-6 h-6 border-[3px] border-black rounded accent-black" required id="terms" />
-                        <label htmlFor="terms" className="text-[10px] font-black uppercase tracking-wider leading-none cursor-pointer">
-                            I AGREE TO THE LABORATORY SAFETY & PRIVACY TERMS
-                        </label>
-                    </div>
+      const data = await registerUser(form);
 
-                    <button type="submit" className="sticker-button w-full bg-gdg-blue text-white italic py-5 text-lg">
-                        Create My Account →
-                    </button>
-                </form>
+      setSuccessMessage(
+        data.message || "Account created successfully. Please log in.",
+      );
 
-                <p className="text-center text-xs font-bold text-black/50 mt-10">
-                    Already a member? <Link to="/login" className="text-gdg-red font-black hover:underline uppercase italic">Back to Login</Link>
-                </p>
-            </div>
-        </main>
-    )
+      setForm({
+        firstName: "",
+        lastName: "",
+        email: "",
+        password: "",
+        userType: "student",
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <PageShell size="sm">
+      <Panel>
+        <PageHeader
+          title="Create account"
+          description="Register as a client to submit print requests and track progress."
+        />
+
+        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="First name">
+              <TextInput
+                type="text"
+                value={form.firstName}
+                onChange={(event) =>
+                  updateField("firstName", event.target.value)
+                }
+                required
+              />
+            </Field>
+
+            <Field label="Last name">
+              <TextInput
+                type="text"
+                value={form.lastName}
+                onChange={(event) =>
+                  updateField("lastName", event.target.value)
+                }
+                required
+              />
+            </Field>
+          </div>
+
+          <Field label="Email">
+            <TextInput
+              type="email"
+              value={form.email}
+              onChange={(event) => updateField("email", event.target.value)}
+              required
+            />
+          </Field>
+
+          <Field label="User type">
+            <SelectInput
+              value={form.userType}
+              onChange={(event) => updateField("userType", event.target.value)}
+              required
+            >
+              <option value="student">Student</option>
+              <option value="faculty">Faculty</option>
+              <option value="researcher">Researcher</option>
+              <option value="others">Others</option>
+            </SelectInput>
+          </Field>
+
+          <Field label="Password">
+            <TextInput
+              type="password"
+              value={form.password}
+              onChange={(event) => updateField("password", event.target.value)}
+              required
+            />
+          </Field>
+
+          <Alert type="error">{error}</Alert>
+
+          {successMessage && (
+            <Alert type="success">
+              {successMessage}
+              <div className="mt-2">
+                <Link to="/login" className="font-semibold underline">
+                  Go to login
+                </Link>
+              </div>
+            </Alert>
+          )}
+
+          <Button type="submit" disabled={isSubmitting} className="w-full">
+            {isSubmitting ? "Creating account..." : "Create account"}
+          </Button>
+        </form>
+      </Panel>
+    </PageShell>
+  );
 }

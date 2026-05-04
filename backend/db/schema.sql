@@ -109,11 +109,16 @@ CREATE TABLE `local_designs` (
   `license_type` varchar(255) DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `uploaded_by` int unsigned NOT NULL,
+  `archived_at` datetime DEFAULT NULL,
+  `archived_by` int unsigned DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `fk_local_designs_uploaded_by` (`uploaded_by`),
-  CONSTRAINT `fk_local_designs_uploaded_by` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+  KEY `idx_local_designs_archived_active_created_at` (`archived_at`,`is_active`,`created_at`,`id`),
+  KEY `fk_local_designs_archived_by` (`archived_by`),
+  CONSTRAINT `fk_local_designs_uploaded_by` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_local_designs_archived_by` FOREIGN KEY (`archived_by`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `design_overrides`;
@@ -153,6 +158,8 @@ CREATE TABLE `design_requests` (
   `result_design_id` int DEFAULT NULL,
   `status` enum('pending','under_review','approved','rejected','completed') NOT NULL DEFAULT 'pending',
   `admin_note` text,
+  `archived_at` datetime DEFAULT NULL,
+  `archived_by` int unsigned DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -160,7 +167,10 @@ CREATE TABLE `design_requests` (
   KEY `idx_design_requests_created_at` (`created_at`,`id`),
   KEY `idx_design_requests_status_created_at` (`status`,`created_at`,`id`),
   KEY `idx_design_requests_result_design_id` (`result_design_id`),
-  CONSTRAINT `fk_design_requests_requested_by` FOREIGN KEY (`requested_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+  KEY `idx_design_requests_archived_status_created_at` (`archived_at`,`status`,`created_at`,`id`),
+  KEY `fk_design_requests_archived_by` (`archived_by`),
+  CONSTRAINT `fk_design_requests_requested_by` FOREIGN KEY (`requested_by`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_design_requests_archived_by` FOREIGN KEY (`archived_by`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `quote_records`;
@@ -229,6 +239,8 @@ CREATE TABLE `print_requests` (
   `receipt_uploaded_at` datetime DEFAULT NULL,
   `status` enum('pending_review','design_in_progress','approved','payment_slip_issued','payment_submitted','payment_verified','printing','completed','rejected') NOT NULL DEFAULT 'pending_review',
   `rejection_reason` text,
+  `archived_at` datetime DEFAULT NULL,
+  `archived_by` int unsigned DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -239,9 +251,12 @@ CREATE TABLE `print_requests` (
   KEY `idx_print_requests_status` (`status`),
   KEY `idx_print_requests_source_type` (`source_type`),
   KEY `idx_print_requests_created_at` (`created_at`),
+  KEY `idx_print_requests_archived_status_created_at` (`archived_at`,`status`,`created_at`,`id`),
+  KEY `fk_print_requests_archived_by` (`archived_by`),
   CONSTRAINT `fk_print_requests_client` FOREIGN KEY (`client_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_print_requests_design_request` FOREIGN KEY (`design_request_id`) REFERENCES `design_requests` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_print_requests_local_design` FOREIGN KEY (`design_id`) REFERENCES `local_designs` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_print_requests_archived_by` FOREIGN KEY (`archived_by`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `chk_print_requests_infill` CHECK (((`infill` >= 0) and (`infill` <= 100))),
   CONSTRAINT `chk_print_requests_quantity` CHECK ((`quantity` >= 1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

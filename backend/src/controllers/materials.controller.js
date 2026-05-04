@@ -4,10 +4,13 @@ import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import {
   getMaterialByKeyForAdmin,
+  listActiveMaterialsForQuote,
+  listMaterialsForAdmin,
   createMaterial as createMaterialRecord,
   updateMaterialByKey,
   deactivateMaterialByKey,
 } from "../models/materials.model.js";
+import { listSlicerProfilesForAdmin } from "../models/slicer-profile.model.js";
 import { registerSlicerProfileVersion } from "../services/material-profile.service.js";
 
 function hasText(value) {
@@ -79,6 +82,57 @@ function parseOptionalBoolean(value, fieldName) {
 
   throw new ApiError(400, `${fieldName} must be a valid boolean value`);
 }
+
+function normalizePublicMaterial(material) {
+  if (!material) {
+    return null;
+  }
+
+  return {
+    materialKey: material.material_key,
+    displayName: material.display_name,
+  };
+}
+
+const listActiveMaterials = asyncHandler(async (req, res) => {
+  const materials = (await listActiveMaterialsForQuote()).map(
+    normalizePublicMaterial,
+  );
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { materials },
+        "Active materials fetched successfully",
+      ),
+    );
+});
+
+const listMaterials = asyncHandler(async (req, res) => {
+  const materials = await listMaterialsForAdmin();
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, { materials }, "Materials fetched successfully"),
+    );
+});
+
+const listSlicerProfiles = asyncHandler(async (req, res) => {
+  const profiles = await listSlicerProfilesForAdmin();
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { profiles },
+        "Slicer profiles fetched successfully",
+      ),
+    );
+});
 
 const createMaterial = asyncHandler(async (req, res) => {
   const materialKey = normalizeMaterialKey(req.body.materialKey);
@@ -247,6 +301,9 @@ const uploadSlicerProfileVersion = asyncHandler(async (req, res) => {
 // });
 
 export {
+  listActiveMaterials,
+  listMaterials,
+  listSlicerProfiles,
   createMaterial,
   updateMaterial,
   deactivateMaterial,

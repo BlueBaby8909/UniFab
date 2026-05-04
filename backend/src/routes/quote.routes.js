@@ -17,15 +17,18 @@ import {
 } from "../validators/quote.validator.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { verifyAdmin } from "../middlewares/role.middleware.js";
-import rateLimit from "express-rate-limit";
+import {
+  publicReadRateLimiter,
+  quoteCalculationRateLimiter,
+  writeRateLimiter,
+} from "../middlewares/rate-limit.middleware.js";
 
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
 const router = express.Router();
 
 router
   .route("/calculate")
   .post(
-    authLimiter,
+    quoteCalculationRateLimiter,
     quoteUploadMiddleware,
     calculateQuoteValidator(),
     validate,
@@ -35,7 +38,7 @@ router
 router
   .route("/local-designs/:designId")
   .post(
-    authLimiter,
+    quoteCalculationRateLimiter,
     calculateLocalDesignQuoteValidator(),
     validate,
     calculateLocalDesignQuote,
@@ -44,7 +47,7 @@ router
 router
   .route("/design-requests/:requestId")
   .post(
-    authLimiter,
+    quoteCalculationRateLimiter,
     verifyJWT,
     calculateDesignRequestQuoteValidator(),
     validate,
@@ -54,6 +57,7 @@ router
 router
   .route("/expired")
   .delete(
+    writeRateLimiter,
     verifyJWT,
     verifyAdmin,
     cleanupExpiredQuotesValidator(),
@@ -63,6 +67,6 @@ router
 
 router
   .route("/:quoteToken")
-  .get(quoteTokenValidator(), validate, getQuoteByToken);
+  .get(publicReadRateLimiter, quoteTokenValidator(), validate, getQuoteByToken);
 
 export default router;

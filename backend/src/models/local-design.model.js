@@ -13,10 +13,38 @@ async function getActiveLocalDesigns() {
       license_type,
       is_active,
       uploaded_by,
+      archived_at,
+      archived_by,
       created_at,
       updated_at
     FROM local_designs
-    WHERE is_active = TRUE
+    WHERE is_active = TRUE AND archived_at IS NULL
+    ORDER BY created_at DESC
+  `;
+
+  const [rows] = await pool.query(sql);
+  return rows;
+}
+
+async function getAllLocalDesignsForAdmin({ archived = false } = {}) {
+  const sql = `
+    SELECT
+      id,
+      title,
+      description,
+      thumbnail_url,
+      file_url,
+      material,
+      dimensions,
+      license_type,
+      is_active,
+      uploaded_by,
+      archived_at,
+      archived_by,
+      created_at,
+      updated_at
+    FROM local_designs
+    WHERE archived_at ${archived ? "IS NOT NULL" : "IS NULL"}
     ORDER BY created_at DESC
   `;
 
@@ -37,10 +65,12 @@ async function getLocalDesignById(designId) {
       license_type,
       is_active,
       uploaded_by,
+      archived_at,
+      archived_by,
       created_at,
       updated_at
     FROM local_designs
-    WHERE id = ? AND is_active = TRUE
+    WHERE id = ? AND is_active = TRUE AND archived_at IS NULL
     LIMIT 1
   `;
 
@@ -61,6 +91,8 @@ async function getLocalDesignByIdForAdmin(designId) {
       license_type,
       is_active,
       uploaded_by,
+      archived_at,
+      archived_by,
       created_at,
       updated_at
     FROM local_designs
@@ -163,11 +195,67 @@ async function deactivateLocalDesignById(designId) {
   return getLocalDesignByIdForAdmin(designId);
 }
 
+async function archiveLocalDesignById(designId, archivedBy) {
+  const sql = `
+    UPDATE local_designs
+    SET
+      archived_at = NOW(),
+      archived_by = ?
+    WHERE id = ? AND archived_at IS NULL
+  `;
+
+  const [result] = await pool.query(sql, [archivedBy, designId]);
+
+  if (result.affectedRows === 0) {
+    return null;
+  }
+
+  return getLocalDesignByIdForAdmin(designId);
+}
+
+async function countLocalDesignReferences(designId) {
+  const printRequestSql = `
+    SELECT COUNT(*) AS total_count
+    FROM print_requests
+    WHERE design_id = ?
+  `;
+
+  const designRequestSql = `
+    SELECT COUNT(*) AS total_count
+    FROM design_requests
+    WHERE result_design_id = ?
+  `;
+
+  const [[printRequestRows], [designRequestRows]] = await Promise.all([
+    pool.query(printRequestSql, [designId]),
+    pool.query(designRequestSql, [designId]),
+  ]);
+
+  return {
+    printRequestCount: Number(printRequestRows[0]?.total_count || 0),
+    designRequestCount: Number(designRequestRows[0]?.total_count || 0),
+  };
+}
+
+async function deleteLocalDesignById(designId) {
+  const sql = `
+    DELETE FROM local_designs
+    WHERE id = ?
+  `;
+
+  const [result] = await pool.query(sql, [designId]);
+  return result.affectedRows > 0;
+}
+
 export {
   getActiveLocalDesigns,
+  getAllLocalDesignsForAdmin,
   getLocalDesignById,
   getLocalDesignByIdForAdmin,
   createLocalDesign,
   updateLocalDesignById,
   deactivateLocalDesignById,
+  archiveLocalDesignById,
+  countLocalDesignReferences,
+  deleteLocalDesignById,
 };

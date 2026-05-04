@@ -16,6 +16,8 @@ import {
   getPaginatedPrintRequestsByOwner,
   getPaginatedAllPrintRequests,
   updatePrintRequestStatusById,
+  archivePrintRequestById,
+  deletePrintRequestById,
   attachReceiptToPrintRequest,
 } from "../models/print-request.model.js";
 import {
@@ -98,6 +100,14 @@ function normalizeOptionalMoney(value, fieldName) {
   }
 
   return parsedValue;
+}
+
+function parseArchivedQuery(value) {
+  return ["true", "1", "yes"].includes(
+    String(value ?? "")
+      .trim()
+      .toLowerCase(),
+  );
 }
 
 function assertValidStatusTransition(currentStatus, nextStatus) {
@@ -336,7 +346,76 @@ async function listAdminPrintRequests({ query = {} }) {
     limit,
     status: normalizeOptionalText(query.status),
     sourceType: normalizeOptionalText(query.sourceType),
+    archived: parseArchivedQuery(query.archived),
   });
+}
+
+async function archiveAdminPrintRequest({ requestId, adminId }) {
+  const existingPrintRequest = await getPrintRequestById(requestId);
+
+  if (!existingPrintRequest) {
+    throw new ApiError(404, "Print request not found");
+  }
+
+  if (existingPrintRequest.archived_at) {
+    throw new ApiError(400, "Print request is already archived");
+  }
+
+  if (existingPrintRequest.status !== PRINT_REQUEST_STATUSES.REJECTED) {
+    throw new ApiError(400, "Only rejected print requests can be archived");
+  }
+
+  const archivedPrintRequest = await archivePrintRequestById(
+    requestId,
+    adminId,
+  );
+
+  if (!archivedPrintRequest) {
+    throw new ApiError(404, "Print request not found");
+  }
+
+  const statusHistory = await getPrintRequestStatusHistoryByRequestId(
+    archivedPrintRequest.id,
+  );
+
+  return {
+    printRequest: archivedPrintRequest,
+    statusHistory,
+  };
+}
+
+async function deleteAdminPrintRequest({ requestId }) {
+  const existingPrintRequest = await getPrintRequestById(requestId);
+
+  if (!existingPrintRequest) {
+    throw new ApiError(404, "Print request not found");
+  }
+
+  if (!existingPrintRequest.archived_at) {
+    throw new ApiError(400, "Only archived print requests can be deleted");
+  }
+
+  if (existingPrintRequest.status !== PRINT_REQUEST_STATUSES.REJECTED) {
+    throw new ApiError(400, "Only rejected print requests can be deleted");
+  }
+
+  const deleted = await deletePrintRequestById(requestId);
+
+  if (!deleted) {
+    throw new ApiError(404, "Print request not found");
+  }
+
+  await Promise.all([
+    existingPrintRequest.source_type === PRINT_REQUEST_SOURCE_TYPES.UPLOAD
+      ? removeManagedPrintRequestModelFile(existingPrintRequest.file_url)
+      : Promise.resolve(false),
+    removeManagedPrintRequestPaymentSlipFile(
+      existingPrintRequest.payment_slip_url,
+    ),
+    removeManagedPrintRequestReceiptFile(existingPrintRequest.receipt_url),
+  ]);
+
+  return { deleted: true };
 }
 
 async function updateAdminPrintRequestStatus({ requestId, adminId, body }) {
@@ -344,6 +423,10 @@ async function updateAdminPrintRequestStatus({ requestId, adminId, body }) {
 
   if (!existingPrintRequest) {
     throw new ApiError(404, "Print request not found");
+  }
+
+  if (existingPrintRequest.archived_at) {
+    throw new ApiError(400, "Archived print requests cannot be updated");
   }
 
   const nextStatus = String(body.status).trim();
@@ -643,6 +726,8 @@ export {
   getPrintRequestDetailForUser,
   listAdminPrintRequests,
   updateAdminPrintRequestStatus,
+  archiveAdminPrintRequest,
+  deleteAdminPrintRequest,
   uploadAdminPrintRequestPaymentSlip,
   uploadClientPrintRequestReceipt,
   getPrintRequestReceiptForUser,

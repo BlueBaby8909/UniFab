@@ -38,6 +38,38 @@ async function getMaterialByKeyForAdmin(materialKey) {
   return rows[0] || null;
 }
 
+async function listActiveMaterialsForQuote() {
+  const sql = `
+    SELECT
+      material_key,
+      display_name
+    FROM materials
+    WHERE is_active = TRUE
+    ORDER BY display_name ASC, material_key ASC
+  `;
+
+  const [rows] = await pool.query(sql);
+  return rows;
+}
+
+async function listMaterialsForAdmin() {
+  const sql = `
+    SELECT
+      id,
+      material_key,
+      display_name,
+      material_cost_per_gram,
+      is_active,
+      created_at,
+      updated_at
+    FROM materials
+    ORDER BY display_name ASC, material_key ASC
+  `;
+
+  const [rows] = await pool.query(sql);
+  return rows;
+}
+
 async function createMaterial({
   materialKey,
   displayName,
@@ -107,6 +139,8 @@ async function deactivateMaterialByKey(materialKey) {
 export {
   getMaterialByKey,
   getMaterialByKeyForAdmin,
+  listActiveMaterialsForQuote,
+  listMaterialsForAdmin,
   createMaterial,
   updateMaterialByKey,
   deactivateMaterialByKey,

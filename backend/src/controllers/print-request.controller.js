@@ -6,6 +6,8 @@ import {
   getPrintRequestDetailForUser,
   listAdminPrintRequests,
   updateAdminPrintRequestStatus,
+  archiveAdminPrintRequest,
+  deleteAdminPrintRequest,
   uploadAdminPrintRequestPaymentSlip,
   uploadClientPrintRequestReceipt,
   getPrintRequestReceiptForUser,
@@ -67,6 +69,8 @@ function normalizePrintRequest(printRequest) {
     receiptUploadedAt: printRequest.receipt_uploaded_at,
     status: printRequest.status,
     rejectionReason: printRequest.rejection_reason,
+    archivedAt: printRequest.archived_at,
+    archivedBy: printRequest.archived_by,
     createdAt: printRequest.created_at,
     updatedAt: printRequest.updated_at,
   };
@@ -188,6 +192,34 @@ const updatePrintRequestStatus = asyncHandler(async (req, res) => {
   );
 });
 
+const archivePrintRequest = asyncHandler(async (req, res) => {
+  const result = await archiveAdminPrintRequest({
+    requestId: req.params.requestId,
+    adminId: req.user.id,
+  });
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        printRequest: normalizePrintRequest(result.printRequest),
+        statusHistory: result.statusHistory.map(normalizeStatusHistory),
+      },
+      "Print request archived successfully",
+    ),
+  );
+});
+
+const deletePrintRequest = asyncHandler(async (req, res) => {
+  await deleteAdminPrintRequest({
+    requestId: req.params.requestId,
+  });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Print request deleted successfully"));
+});
+
 const uploadPrintRequestReceipt = asyncHandler(async (req, res) => {
   const result = await uploadClientPrintRequestReceipt({
     clientId: req.user.id,
@@ -248,6 +280,8 @@ export {
   getMyPrintRequestDetail,
   listAllPrintRequests,
   updatePrintRequestStatus,
+  archivePrintRequest,
+  deletePrintRequest,
   uploadPrintRequestPaymentSlip,
   uploadPrintRequestReceipt,
   getPrintRequestReceipt,

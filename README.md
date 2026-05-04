@@ -155,9 +155,13 @@ A quote cannot be calculated unless an active material and active slicer profile
 
 Admins review submitted requests, confirm feasibility, set confirmed cost, issue payment slips, verify receipts, and update request status.
 
+Rejected print requests can be archived to remove them from the active admin queue. Archived rejected print requests may be permanently deleted afterward as an admin cleanup action.
+
 ### Design Request Management
 
 Admins review custom design requests, inspect reference files, update request status, and add admin notes.
+
+Rejected design requests can be archived to remove them from the active admin queue. Archived rejected design requests may be permanently deleted only when no print requests still reference them.
 
 ### Design Library Management
 
@@ -167,6 +171,8 @@ Admins manage:
 - Local design categories/tags
 - MyMiniFactory design overrides
 - MyMiniFactory readiness statuses
+
+Unavailable local designs can be archived to hide them from the default admin list. Archived unavailable local designs may be permanently deleted only when no print requests or design requests still reference them.
 
 Recommended MyMiniFactory readiness statuses:
 

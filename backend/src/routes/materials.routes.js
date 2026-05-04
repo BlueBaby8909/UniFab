@@ -1,5 +1,8 @@
 import express from "express";
 import {
+  listActiveMaterials,
+  listMaterials,
+  listSlicerProfiles,
   createMaterial,
   updateMaterial,
   deactivateMaterial,
@@ -15,26 +18,42 @@ import {
   deactivateMaterialValidator,
   uploadSlicerProfileVersionValidator,
 } from "../validators/materials.validator.js";
-import rateLimit from "express-rate-limit";
+import {
+  publicReadRateLimiter,
+  uploadRateLimiter,
+  writeRateLimiter,
+} from "../middlewares/rate-limit.middleware.js";
 
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
 const router = express.Router();
 
-router.use(authLimiter, verifyJWT, verifyAdmin);
+router.route("/active").get(publicReadRateLimiter, listActiveMaterials);
 
-router.route("/").post(createMaterialValidator(), validate, createMaterial);
+router.use(verifyJWT, verifyAdmin);
+
+router
+  .route("/")
+  .get(publicReadRateLimiter, listMaterials)
+  .post(writeRateLimiter, createMaterialValidator(), validate, createMaterial);
+
+router.route("/profiles").get(publicReadRateLimiter, listSlicerProfiles);
 
 router
   .route("/:materialKey")
-  .patch(updateMaterialValidator(), validate, updateMaterial);
+  .patch(writeRateLimiter, updateMaterialValidator(), validate, updateMaterial);
 
 router
   .route("/:materialKey/deactivate")
-  .patch(deactivateMaterialValidator(), validate, deactivateMaterial);
+  .patch(
+    writeRateLimiter,
+    deactivateMaterialValidator(),
+    validate,
+    deactivateMaterial,
+  );
 
 router
   .route("/:materialKey/profiles")
   .post(
+    uploadRateLimiter,
     slicerProfileUploadMiddleware,
     uploadSlicerProfileVersionValidator(),
     validate,

@@ -1,5 +1,4 @@
 import express from "express";
-import rateLimit from "express-rate-limit";
 import {
   createDesignRequest,
   listMyDesignRequests,
@@ -8,6 +7,8 @@ import {
   getDesignRequestDetailForAdmin,
   updateDesignRequestStatus,
   updateDesignRequestResult,
+  archiveDesignRequest,
+  deleteDesignRequest,
 } from "../controllers/design-requests.controller.js";
 import { validate } from "../middlewares/validator.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -21,19 +22,20 @@ import {
   listMyDesignRequestsQueryValidator,
   listAllDesignRequestsQueryValidator,
 } from "../validators/design-requests.validator.js";
-
-const designRequestLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
-});
+import {
+  authenticatedReadRateLimiter,
+  uploadRateLimiter,
+  writeRateLimiter,
+} from "../middlewares/rate-limit.middleware.js";
 
 const router = express.Router();
 
-router.use(designRequestLimiter, verifyJWT);
+router.use(verifyJWT);
 
 router
   .route("/")
   .post(
+    uploadRateLimiter,
     designRequestReferenceUploadMiddleware,
     createDesignRequestValidator(),
     validate,
@@ -42,15 +44,26 @@ router
 
 router
   .route("/mine")
-  .get(listMyDesignRequestsQueryValidator(), validate, listMyDesignRequests);
+  .get(
+    authenticatedReadRateLimiter,
+    listMyDesignRequestsQueryValidator(),
+    validate,
+    listMyDesignRequests,
+  );
 
 router
   .route("/mine/:requestId")
-  .get(designRequestIdValidator(), validate, getMyDesignRequestDetail);
+  .get(
+    authenticatedReadRateLimiter,
+    designRequestIdValidator(),
+    validate,
+    getMyDesignRequestDetail,
+  );
 
 router
   .route("/admin")
   .get(
+    authenticatedReadRateLimiter,
     verifyAdmin,
     listAllDesignRequestsQueryValidator(),
     validate,
@@ -60,15 +73,24 @@ router
 router
   .route("/admin/:requestId")
   .get(
+    authenticatedReadRateLimiter,
     verifyAdmin,
     designRequestIdValidator(),
     validate,
     getDesignRequestDetailForAdmin,
+  )
+  .delete(
+    writeRateLimiter,
+    verifyAdmin,
+    designRequestIdValidator(),
+    validate,
+    deleteDesignRequest,
   );
 
 router
   .route("/admin/:requestId/status")
   .patch(
+    writeRateLimiter,
     verifyAdmin,
     updateDesignRequestStatusValidator(),
     validate,
@@ -76,8 +98,19 @@ router
   );
 
 router
+  .route("/admin/:requestId/archive")
+  .patch(
+    writeRateLimiter,
+    verifyAdmin,
+    designRequestIdValidator(),
+    validate,
+    archiveDesignRequest,
+  );
+
+router
   .route("/admin/:requestId/result")
   .patch(
+    writeRateLimiter,
     verifyAdmin,
     updateDesignRequestResultValidator(),
     validate,

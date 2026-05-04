@@ -9,6 +9,9 @@ import {
   getDesignRequestById,
   updateDesignRequestStatusById,
   updateDesignRequestResultById,
+  archiveDesignRequestById,
+  countPrintRequestsByDesignRequestId,
+  deleteDesignRequestById,
   getPaginatedDesignRequestsByOwner,
   getPaginatedAllDesignRequests,
 } from "../models/design-requests.model.js";
@@ -117,6 +120,8 @@ function normalizeDesignRequest(designRequest) {
     resultDesignId: designRequest.result_design_id,
     status: designRequest.status,
     adminNote: designRequest.admin_note,
+    archivedAt: designRequest.archived_at,
+    archivedBy: designRequest.archived_by,
     createdAt: designRequest.created_at,
     updatedAt: designRequest.updated_at,
   };
@@ -228,6 +233,11 @@ const listAllDesignRequests = asyncHandler(async (req, res) => {
     page,
     limit,
     status: normalizeOptionalText(req.query.status),
+    archived: ["true", "1", "yes"].includes(
+      String(req.query.archived ?? "")
+        .trim()
+        .toLowerCase(),
+    ),
   });
 
   const designRequests = result.rows.map(normalizeDesignRequest);
@@ -246,6 +256,85 @@ const listAllDesignRequests = asyncHandler(async (req, res) => {
       "Design requests fetched successfully",
     ),
   );
+});
+
+const archiveDesignRequest = asyncHandler(async (req, res) => {
+  const existingDesignRequest = await getDesignRequestById(
+    req.params.requestId,
+  );
+
+  if (!existingDesignRequest) {
+    throw new ApiError(404, "Design request not found");
+  }
+
+  if (existingDesignRequest.archived_at) {
+    throw new ApiError(400, "Design request is already archived");
+  }
+
+  if (existingDesignRequest.status !== DESIGN_REQUEST_STATUSES.REJECTED) {
+    throw new ApiError(400, "Only rejected design requests can be archived");
+  }
+
+  const designRequest = await archiveDesignRequestById(
+    req.params.requestId,
+    req.user.id,
+  );
+
+  if (!designRequest) {
+    throw new ApiError(404, "Design request not found");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { designRequest: normalizeDesignRequest(designRequest) },
+        "Design request archived successfully",
+      ),
+    );
+});
+
+const deleteDesignRequest = asyncHandler(async (req, res) => {
+  const existingDesignRequest = await getDesignRequestById(
+    req.params.requestId,
+  );
+
+  if (!existingDesignRequest) {
+    throw new ApiError(404, "Design request not found");
+  }
+
+  if (!existingDesignRequest.archived_at) {
+    throw new ApiError(400, "Only archived design requests can be deleted");
+  }
+
+  if (existingDesignRequest.status !== DESIGN_REQUEST_STATUSES.REJECTED) {
+    throw new ApiError(400, "Only rejected design requests can be deleted");
+  }
+
+  const linkedPrintRequestCount = await countPrintRequestsByDesignRequestId(
+    req.params.requestId,
+  );
+
+  if (linkedPrintRequestCount > 0) {
+    throw new ApiError(
+      409,
+      "Design request cannot be deleted while print requests still reference it",
+    );
+  }
+
+  const referenceFiles = parseJsonSafely(existingDesignRequest.reference_files);
+  const deleted = await deleteDesignRequestById(req.params.requestId);
+
+  if (!deleted) {
+    throw new ApiError(404, "Design request not found");
+  }
+
+  await removeManagedDesignRequestReferenceFiles(referenceFiles);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Design request deleted successfully"));
 });
 
 const getDesignRequestDetailForAdmin = asyncHandler(async (req, res) => {
@@ -273,6 +362,10 @@ const updateDesignRequestStatus = asyncHandler(async (req, res) => {
 
   if (!existingDesignRequest) {
     throw new ApiError(404, "Design request not found");
+  }
+
+  if (existingDesignRequest.archived_at) {
+    throw new ApiError(400, "Archived design requests cannot be updated");
   }
 
   const nextStatus = Object.prototype.hasOwnProperty.call(req.body, "status")
@@ -348,6 +441,10 @@ const updateDesignRequestResult = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Design request not found");
   }
 
+  if (existingDesignRequest.archived_at) {
+    throw new ApiError(400, "Archived design requests cannot be updated");
+  }
+
   if (
     ![
       DESIGN_REQUEST_STATUSES.APPROVED,
@@ -412,4 +509,6 @@ export {
   getDesignRequestDetailForAdmin,
   updateDesignRequestStatus,
   updateDesignRequestResult,
+  archiveDesignRequest,
+  deleteDesignRequest,
 };
