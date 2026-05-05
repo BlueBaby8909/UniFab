@@ -1,6 +1,7 @@
 import { ApiResponse } from "../utils/api-response.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
+import pool from "../db/db.js";
 import {
   searchObjects,
   getObjectById,
@@ -16,6 +17,12 @@ import {
   archiveLocalDesignById,
   countLocalDesignReferences,
   deleteLocalDesignById,
+  listDesignCategories,
+  listDesignTags,
+  getDesignCategoryById,
+  upsertDesignCategoryByName,
+  upsertDesignTagByName,
+  replaceLocalDesignTags,
 } from "../models/local-design.model.js";
 import {
   getAllDesignOverrides,
@@ -63,12 +70,14 @@ function applyOverrideToMmfItem(item, override) {
           isHidden: Boolean(override.is_hidden),
           isPinned: Boolean(override.is_pinned),
           isPrintReady: Boolean(override.is_print_ready),
+          linkedLocalDesignId: override.linked_local_design_id || null,
           clientNote: override.client_note || null,
         }
       : {
           isHidden: false,
           isPinned: false,
           isPrintReady: false,
+          linkedLocalDesignId: null,
           clientNote: null,
         },
   };
@@ -109,9 +118,69 @@ function matchesLocalDesignSearch(localDesign, searchQuery) {
     localDesign.material,
     localDesign.dimensions,
     localDesign.license_type,
+    localDesign.category_name,
+    ...(Array.isArray(localDesign.tags)
+      ? localDesign.tags.map((tag) => tag.name)
+      : []),
   ]
     .filter(Boolean)
     .some((value) => String(value).toLowerCase().includes(normalizedQuery));
+}
+
+function matchesLocalDesignCategory(localDesign, categoryFilter) {
+  if (!hasText(categoryFilter)) {
+    return true;
+  }
+
+  const normalizedCategory = String(categoryFilter).trim().toLowerCase();
+
+  return [localDesign.category_slug, localDesign.category_name]
+    .filter(Boolean)
+    .some((value) => String(value).toLowerCase() === normalizedCategory);
+}
+
+function matchesLocalDesignTag(localDesign, tagFilter) {
+  if (!hasText(tagFilter)) {
+    return true;
+  }
+
+  const normalizedTag = String(tagFilter).trim().toLowerCase();
+
+  return (localDesign.tags || []).some((tag) =>
+    [tag.slug, tag.name]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase() === normalizedTag),
+  );
+}
+
+function parseIdList(value) {
+  if (Array.isArray(value)) {
+    return value.map(Number).filter((item) => Number.isInteger(item) && item > 0);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((item) => Number(item.trim()))
+      .filter((item) => Number.isInteger(item) && item > 0);
+  }
+
+  return [];
+}
+
+function parseNameList(value) {
+  if (Array.isArray(value)) {
+    return value.map(normalizeOptionalText).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map(normalizeOptionalText)
+      .filter(Boolean);
+  }
+
+  return [];
 }
 
 function getUploadedFile(req, fieldName) {
@@ -155,6 +224,15 @@ function normalizeLocalDesign(localDesign) {
     material: localDesign.material,
     dimensions: localDesign.dimensions,
     licenseType: localDesign.license_type,
+    category: localDesign.category_id
+      ? {
+          id: localDesign.category_id,
+          name: localDesign.category_name,
+          slug: localDesign.category_slug,
+          description: localDesign.category_description,
+        }
+      : null,
+    tags: Array.isArray(localDesign.tags) ? localDesign.tags : [],
     isActive: Boolean(localDesign.is_active),
     uploadedBy: localDesign.uploaded_by,
     archivedAt: localDesign.archived_at,
@@ -175,12 +253,121 @@ function normalizeDesignOverride(designOverride) {
     isHidden: Boolean(designOverride.is_hidden),
     isPinned: Boolean(designOverride.is_pinned),
     isPrintReady: Boolean(designOverride.is_print_ready),
+    linkedLocalDesignId: designOverride.linked_local_design_id || null,
     clientNote: designOverride.client_note,
     createdBy: designOverride.created_by,
     updatedBy: designOverride.updated_by,
     createdAt: designOverride.created_at,
     updatedAt: designOverride.updated_at,
   };
+}
+
+function normalizeCategory(category) {
+  if (!category) {
+    return null;
+  }
+
+  return {
+    id: category.id,
+    name: category.name,
+    slug: category.slug,
+    description: category.description,
+    isActive: Boolean(category.is_active),
+    createdAt: category.created_at,
+    updatedAt: category.updated_at,
+  };
+}
+
+function normalizeTag(tag) {
+  if (!tag) {
+    return null;
+  }
+
+  return {
+    id: tag.id,
+    name: tag.name,
+    slug: tag.slug,
+    isActive: Boolean(tag.is_active),
+    createdAt: tag.created_at,
+    updatedAt: tag.updated_at,
+  };
+}
+
+async function resolveLocalDesignTaxonomy({
+  body,
+  userId,
+  connection,
+  existingLocalDesign = null,
+}) {
+  let categoryId = existingLocalDesign?.category_id || null;
+
+  if (Object.prototype.hasOwnProperty.call(body, "categoryId")) {
+    categoryId = body.categoryId ? Number(body.categoryId) : null;
+
+    if (categoryId) {
+      const category = await getDesignCategoryById(categoryId, connection);
+
+      if (!category || !category.is_active) {
+        throw new ApiError(400, "Selected design category is unavailable");
+      }
+    }
+  }
+
+  if (hasText(body.categoryName)) {
+    const category = await upsertDesignCategoryByName({
+      name: body.categoryName,
+      userId,
+      connection,
+    });
+    categoryId = category?.id || null;
+  }
+
+  const hasTagUpdate =
+    Object.prototype.hasOwnProperty.call(body, "tagIds") ||
+    Object.prototype.hasOwnProperty.call(body, "tagNames");
+
+  const tagIds = parseIdList(body.tagIds);
+  const tagNames = parseNameList(body.tagNames);
+
+  for (const tagName of tagNames) {
+    const tag = await upsertDesignTagByName({
+      name: tagName,
+      userId,
+      connection,
+    });
+
+    if (tag?.id) {
+      tagIds.push(tag.id);
+    }
+  }
+
+  return {
+    categoryId,
+    tagIds: [...new Set(tagIds)],
+    hasTagUpdate,
+  };
+}
+
+async function resolveLinkedLocalDesignId(body) {
+  if (!Object.prototype.hasOwnProperty.call(body, "linkedLocalDesignId")) {
+    return null;
+  }
+
+  if (!hasText(body.linkedLocalDesignId)) {
+    return null;
+  }
+
+  const linkedLocalDesignId = Number(body.linkedLocalDesignId);
+  const localDesign = await getLocalDesignById(linkedLocalDesignId);
+
+  if (!localDesign) {
+    throw new ApiError(
+      400,
+      "Linked local design must be active and available to clients",
+    );
+  }
+
+  return linkedLocalDesignId;
 }
 
 async function cleanupNewUploadedLocalDesignAssets(req) {
@@ -217,6 +404,10 @@ const searchDesignLibrary = asyncHandler(async (req, res) => {
 
   const localDesigns = allLocalDesigns
     .filter((localDesign) => matchesLocalDesignSearch(localDesign, searchQuery))
+    .filter((localDesign) =>
+      matchesLocalDesignCategory(localDesign, req.query.category),
+    )
+    .filter((localDesign) => matchesLocalDesignTag(localDesign, req.query.tag))
     .map(normalizeLocalDesign);
 
   let mmfResults = null;
@@ -323,6 +514,24 @@ const listLocalDesigns = asyncHandler(async (req, res) => {
     );
 });
 
+const getDesignTaxonomy = asyncHandler(async (req, res) => {
+  const [categories, tags] = await Promise.all([
+    listDesignCategories({ activeOnly: true }),
+    listDesignTags({ activeOnly: true }),
+  ]);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        categories: categories.map(normalizeCategory),
+        tags: tags.map(normalizeTag),
+      },
+      "Design taxonomy fetched successfully",
+    ),
+  );
+});
+
 const listLocalDesignsForAdmin = asyncHandler(async (req, res) => {
   const archived = ["true", "1", "yes"].includes(
     String(req.query.archived ?? "")
@@ -403,26 +612,57 @@ const createLocalDesign = asyncHandler(async (req, res) => {
     : null;
 
   try {
-    const localDesign = await createLocalDesignRecord({
-      title: String(req.body.title).trim(),
-      description: normalizeOptionalText(req.body.description),
-      thumbnailUrl,
-      fileUrl,
-      material: normalizeOptionalText(req.body.material),
-      dimensions: normalizeOptionalText(req.body.dimensions),
-      licenseType: normalizeOptionalText(req.body.licenseType),
-      uploadedBy: req.user.id,
-    });
+    const connection = await pool.getConnection();
 
-    return res
-      .status(201)
-      .json(
-        new ApiResponse(
-          201,
-          { localDesign: normalizeLocalDesign(localDesign) },
-          "Local design created successfully",
-        ),
+    try {
+      await connection.beginTransaction();
+
+      const taxonomy = await resolveLocalDesignTaxonomy({
+        body: req.body,
+        userId: req.user.id,
+        connection,
+      });
+
+      const localDesign = await createLocalDesignRecord(
+        {
+          title: String(req.body.title).trim(),
+          description: normalizeOptionalText(req.body.description),
+          thumbnailUrl,
+          fileUrl,
+          material: normalizeOptionalText(req.body.material),
+          dimensions: normalizeOptionalText(req.body.dimensions),
+          licenseType: normalizeOptionalText(req.body.licenseType),
+          categoryId: taxonomy.categoryId,
+          uploadedBy: req.user.id,
+        },
+        connection,
       );
+
+      await replaceLocalDesignTags({
+        localDesignId: localDesign.id,
+        tagIds: taxonomy.tagIds,
+        connection,
+      });
+
+      await connection.commit();
+
+      const savedLocalDesign = await getLocalDesignByIdForAdmin(localDesign.id);
+
+      return res
+        .status(201)
+        .json(
+          new ApiResponse(
+            201,
+            { localDesign: normalizeLocalDesign(savedLocalDesign) },
+            "Local design created successfully",
+          ),
+        );
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   } catch (error) {
     await removeManagedLocalDesignFile(fileUrl, "design");
 
@@ -470,30 +710,66 @@ const updateLocalDesign = asyncHandler(async (req, res) => {
     Boolean(existingLocalDesign.is_active);
 
   try {
-    const localDesign = await updateLocalDesignById(designId, {
-      title: hasText(req.body.title)
-        ? String(req.body.title).trim()
-        : existingLocalDesign.title,
-      description: hasText(req.body.description)
-        ? String(req.body.description).trim()
-        : existingLocalDesign.description,
-      thumbnailUrl: nextThumbnailUrl,
-      fileUrl: nextFileUrl,
-      material: hasText(req.body.material)
-        ? String(req.body.material).trim()
-        : existingLocalDesign.material,
-      dimensions: hasText(req.body.dimensions)
-        ? String(req.body.dimensions).trim()
-        : existingLocalDesign.dimensions,
-      licenseType: hasText(req.body.licenseType)
-        ? String(req.body.licenseType).trim()
-        : existingLocalDesign.license_type,
-      isActive,
-    });
+    const connection = await pool.getConnection();
+    let localDesign;
+
+    try {
+      await connection.beginTransaction();
+
+      const taxonomy = await resolveLocalDesignTaxonomy({
+        body: req.body,
+        userId: req.user.id,
+        connection,
+        existingLocalDesign,
+      });
+
+      localDesign = await updateLocalDesignById(
+        designId,
+        {
+          title: hasText(req.body.title)
+            ? String(req.body.title).trim()
+            : existingLocalDesign.title,
+          description: hasText(req.body.description)
+            ? String(req.body.description).trim()
+            : existingLocalDesign.description,
+          thumbnailUrl: nextThumbnailUrl,
+          fileUrl: nextFileUrl,
+          material: hasText(req.body.material)
+            ? String(req.body.material).trim()
+            : existingLocalDesign.material,
+          dimensions: hasText(req.body.dimensions)
+            ? String(req.body.dimensions).trim()
+            : existingLocalDesign.dimensions,
+          licenseType: hasText(req.body.licenseType)
+            ? String(req.body.licenseType).trim()
+            : existingLocalDesign.license_type,
+          categoryId: taxonomy.categoryId,
+          isActive,
+        },
+        connection,
+      );
+
+      if (taxonomy.hasTagUpdate) {
+        await replaceLocalDesignTags({
+          localDesignId: Number(designId),
+          tagIds: taxonomy.tagIds,
+          connection,
+        });
+      }
+
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
 
     if (!localDesign) {
       throw new ApiError(404, "Local design not found");
     }
+
+    const refreshedLocalDesign = await getLocalDesignByIdForAdmin(designId);
 
     const replacedDesignFile =
       uploadedDesignFile &&
@@ -524,7 +800,7 @@ const updateLocalDesign = asyncHandler(async (req, res) => {
       .json(
         new ApiResponse(
           200,
-          { localDesign: normalizeLocalDesign(localDesign) },
+          { localDesign: normalizeLocalDesign(refreshedLocalDesign) },
           "Local design updated successfully",
         ),
       );
@@ -669,12 +945,23 @@ const createDesignOverride = asyncHandler(async (req, res) => {
     );
   }
 
+  const isPrintReady =
+    parseOptionalBoolean(req.body.isPrintReady, "isPrintReady") ?? false;
+  const linkedLocalDesignId = await resolveLinkedLocalDesignId(req.body);
+
+  if (isPrintReady && !linkedLocalDesignId) {
+    throw new ApiError(
+      400,
+      "A print-ready MMF override must link to an active local design",
+    );
+  }
+
   const designOverride = await createDesignOverrideRecord({
     mmfObjectId,
     isHidden: parseOptionalBoolean(req.body.isHidden, "isHidden") ?? false,
     isPinned: parseOptionalBoolean(req.body.isPinned, "isPinned") ?? false,
-    isPrintReady:
-      parseOptionalBoolean(req.body.isPrintReady, "isPrintReady") ?? false,
+    isPrintReady,
+    linkedLocalDesignId,
     clientNote: normalizeOptionalText(req.body.clientNote),
     createdBy: req.user.id,
     updatedBy: req.user.id,
@@ -699,6 +986,23 @@ const updateDesignOverride = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Design override not found");
   }
 
+  const isPrintReady =
+    parseOptionalBoolean(req.body.isPrintReady, "isPrintReady") ??
+    Boolean(existingOverride.is_print_ready);
+  const linkedLocalDesignId = Object.prototype.hasOwnProperty.call(
+    req.body,
+    "linkedLocalDesignId",
+  )
+    ? await resolveLinkedLocalDesignId(req.body)
+    : existingOverride.linked_local_design_id;
+
+  if (isPrintReady && !linkedLocalDesignId) {
+    throw new ApiError(
+      400,
+      "A print-ready MMF override must link to an active local design",
+    );
+  }
+
   const designOverride = await updateDesignOverrideById(overrideId, {
     isHidden:
       parseOptionalBoolean(req.body.isHidden, "isHidden") ??
@@ -706,9 +1010,8 @@ const updateDesignOverride = asyncHandler(async (req, res) => {
     isPinned:
       parseOptionalBoolean(req.body.isPinned, "isPinned") ??
       Boolean(existingOverride.is_pinned),
-    isPrintReady:
-      parseOptionalBoolean(req.body.isPrintReady, "isPrintReady") ??
-      Boolean(existingOverride.is_print_ready),
+    isPrintReady,
+    linkedLocalDesignId,
     clientNote: Object.prototype.hasOwnProperty.call(req.body, "clientNote")
       ? normalizeOptionalText(req.body.clientNote)
       : existingOverride.client_note,
@@ -745,6 +1048,7 @@ const deleteDesignOverride = asyncHandler(async (req, res) => {
 export {
   searchDesignLibrary,
   getMmfDesignDetail,
+  getDesignTaxonomy,
   listLocalDesigns,
   listLocalDesignsForAdmin,
   getLocalDesignDetail,

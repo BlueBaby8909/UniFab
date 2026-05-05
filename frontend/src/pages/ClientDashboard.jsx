@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { resendVerificationEmail } from "../api/auth";
 import { Button } from "../components/ui/Button";
 import { Alert } from "../components/ui/Feedback";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
@@ -75,39 +74,6 @@ export default function ClientDashboard() {
               </p>
             </Link>
           ))}
-        </div>
-
-        <div className="mt-8 rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="font-semibold text-slate-950">
-                Email verification
-              </h2>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
-                Request a new verification email if your original link expired
-                or did not arrive.
-              </p>
-            </div>
-
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleResendVerification}
-              disabled={isSendingVerification}
-              className="shrink-0"
-            >
-              {isSendingVerification
-                ? "Sending..."
-                : "Resend verification email"}
-            </Button>
-          </div>
-
-          <Alert className="mt-4" type="success">
-            {verificationMessage}
-          </Alert>
-          <Alert className="mt-4" type="error">
-            {verificationError}
-          </Alert>
         </div>
       </Panel>
     </PageShell>

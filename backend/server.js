@@ -15,6 +15,7 @@ import healthCheckRoutes from "./src/routes/healthcheck.routes.js";
 import designsRoutes from "./src/routes/designs.routes.js";
 import designRequestRoutes from "./src/routes/design-requests.routes.js";
 import printRequestRoutes from "./src/routes/print-request.routes.js";
+import printersRoutes from "./src/routes/printers.routes.js";
 import { startExpiredQuoteCleanupJob } from "./src/services/quote-cleanup.service.js";
 import { ApiError } from "./src/utils/api-error.js";
 
@@ -103,6 +104,7 @@ app.use("/api/v1/materials", materialsRoutes);
 app.use("/api/v1/designs", designsRoutes);
 app.use("/api/v1/design-requests", designRequestRoutes);
 app.use("/api/v1/requests", printRequestRoutes);
+app.use("/api/v1/printers", printersRoutes);
 app.use("/api/v1/healthcheck", healthCheckRoutes);
 
 app.use("/api", (req, res, next) => {

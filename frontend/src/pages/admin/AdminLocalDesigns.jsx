@@ -109,6 +109,7 @@ export default function AdminLocalDesigns() {
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
                   <th className="px-4 py-3 font-medium">Title</th>
+                  <th className="px-4 py-3 font-medium">Category</th>
                   <th className="px-4 py-3 font-medium">Material</th>
                   <th className="px-4 py-3 font-medium">Dimensions</th>
                   <th className="px-4 py-3 font-medium">Status</th>
@@ -124,6 +125,10 @@ export default function AdminLocalDesigns() {
                   <tr key={design.id}>
                     <td className="px-4 py-3 font-medium text-slate-950">
                       {design.title}
+                    </td>
+
+                    <td className="px-4 py-3 text-slate-600">
+                      {design.category?.name || "-"}
                     </td>
 
                     <td className="px-4 py-3 text-slate-600">

@@ -9,15 +9,22 @@
 
 ## Product Rules
 - Guests may upload/configure models and view calculated quotes without logging in.
-- Print request submission requires login.
+- Print request submission requires login and verified email.
 - Custom design request submission requires login.
 - A print request must not be submitted without a successful quote.
+- Users must accept Terms and Conditions before final print request submission.
 - Quote calculation must be slicer-based and must include validated print time, filament usage, and pricing.
+- The system provides basic pre-flight warnings using slicer output (e.g., long print times).
 - Quote data should persist through login using backend quote records with short-lived quote tokens.
 - Submitted print requests must store a quote snapshot so later pricing changes do not silently affect them.
-- MyMiniFactory designs are not automatically printable. They need admin readiness approval before direct print submission.
-- Local designs may use categories/tags for filtering, but tags are not a blocker for the core request workflow.
-- Printer information may be shown to clients, but printer selection must not affect quote generation or request submission in the current scope.
+- Payment slips are auto-generated; payment verification relies on in-person physical receipt checking by admins (no client upload).
+- "Print Ready" library designs offer instant quoting using secure, backend-cached files.
+- Users can submit designs to the library, but they remain `pending_approval` until an admin reviews them.
+- MyMiniFactory designs marked "Needs Review" are not hosted on UniFab; instead, an outbound link directs users to the source.
+- Admins manage MyMiniFactory designs using an integrated API browser, assigning explicit file targets for Print Ready status to prevent manual upload errors.
+- Local designs may use categories/tags for filtering and organization.
+- Printer information is managed by admins and may be shown publicly to clients. Printer selection must not affect quote generation or request submission in the current scope.
+- System status can be monitored by admins only.
 - Website/content management is approved but secondary to the core quote and request workflow.
 
 ## Commands
@@ -30,12 +37,14 @@
 - **Frontend lint:** `cd frontend && npm run lint`
 
 ## Implementation Priorities
-1. Stabilize authentication and protected-route behavior.
-2. Implement public quote calculation and quote-token persistence.
+1. Stabilize authentication and protected-route behavior (including email verification and Terms & Conditions acceptance).
+2. Implement public quote calculation and quote-token persistence with Interactive 3D Model Viewer and basic pre-flight warnings.
 3. Require a valid successful quote before print request submission.
-4. Connect client upload, library, custom design, request history, and receipt workflows to backend APIs.
-5. Build admin workflows for pricing, materials, slicer profiles, design readiness, print requests, and design requests.
-6. Add supporting features such as local design tags/categories, printer information, and website/content management.
+4. Connect client upload, library, custom design, request history (visual timeline), and payment workflows (auto payment slips, physical receipt checking) to backend APIs.
+5. Build admin workflows for pricing, materials (rich specs), slicer profiles, print requests, and design requests.
+6. Build Design Library enhancements: "Submit to Community" user flow, "Print Ready" instant quoting, and MyMiniFactory direct file mapping via an integrated admin API browser.
+7. Support additional features including local design categories/tags, printer information management, system status healthchecks, and admin dashboard sorting/filtering.
+8. Add supporting features such as website/content management (including DFM guidelines).
 
 ## Backend Guidance
 - Keep quote generation fully backend-controlled.

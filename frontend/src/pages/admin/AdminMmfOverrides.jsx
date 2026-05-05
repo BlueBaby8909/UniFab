@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   createAdminDesignOverride,
   deleteAdminDesignOverride,
+  getAdminLocalDesigns,
   getAdminDesignOverrides,
   updateAdminDesignOverride,
 } from "../../api/designs";
@@ -25,6 +26,7 @@ function StatusBadge({ label, tone = "neutral" }) {
 
 export default function AdminMmfOverrides() {
   const [overrides, setOverrides] = useState([]);
+  const [localDesigns, setLocalDesigns] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -34,6 +36,7 @@ export default function AdminMmfOverrides() {
     isHidden: false,
     isPinned: false,
     isPrintReady: false,
+    linkedLocalDesignId: "",
     clientNote: "",
   });
 
@@ -44,6 +47,7 @@ export default function AdminMmfOverrides() {
     isHidden: false,
     isPinned: false,
     isPrintReady: false,
+    linkedLocalDesignId: "",
     clientNote: "",
   });
   const [isUpdating, setIsUpdating] = useState(false);
@@ -72,6 +76,24 @@ export default function AdminMmfOverrides() {
     loadOverrides();
   }, []);
 
+  useEffect(() => {
+    async function loadLocalDesigns() {
+      try {
+        const data = await getAdminLocalDesigns();
+        const payload = data.data || data;
+        setLocalDesigns(
+          (payload.localDesigns || payload.designs || []).filter(
+            (design) => design.isActive,
+          ),
+        );
+      } catch {
+        setLocalDesigns([]);
+      }
+    }
+
+    loadLocalDesigns();
+  }, []);
+
   const handleCreateOverride = async (event) => {
     event.preventDefault();
 
@@ -94,6 +116,13 @@ export default function AdminMmfOverrides() {
       return;
     }
 
+    if (form.isPrintReady && !form.linkedLocalDesignId) {
+      setError(
+        "Print-ready MMF overrides must link to an active local design.",
+      );
+      return;
+    }
+
     try {
       setIsCreating(true);
       setError("");
@@ -104,6 +133,7 @@ export default function AdminMmfOverrides() {
         isHidden: form.isHidden,
         isPinned: form.isPinned,
         isPrintReady: form.isPrintReady,
+        linkedLocalDesignId: form.linkedLocalDesignId || null,
         clientNote: form.clientNote.trim(),
       });
 
@@ -123,6 +153,7 @@ export default function AdminMmfOverrides() {
         isHidden: false,
         isPinned: false,
         isPrintReady: false,
+        linkedLocalDesignId: "",
         clientNote: "",
       });
 
@@ -140,6 +171,7 @@ export default function AdminMmfOverrides() {
       isHidden: Boolean(override.isHidden),
       isPinned: Boolean(override.isPinned),
       isPrintReady: Boolean(override.isPrintReady),
+      linkedLocalDesignId: override.linkedLocalDesignId || "",
       clientNote: override.clientNote || "",
     });
     setError("");
@@ -152,6 +184,7 @@ export default function AdminMmfOverrides() {
       isHidden: false,
       isPinned: false,
       isPrintReady: false,
+      linkedLocalDesignId: "",
       clientNote: "",
     });
     setError("");
@@ -172,6 +205,13 @@ export default function AdminMmfOverrides() {
       return;
     }
 
+    if (editForm.isPrintReady && !editForm.linkedLocalDesignId) {
+      setError(
+        "Print-ready MMF overrides must link to an active local design.",
+      );
+      return;
+    }
+
     try {
       setIsUpdating(true);
       setError("");
@@ -181,6 +221,7 @@ export default function AdminMmfOverrides() {
         isHidden: editForm.isHidden,
         isPinned: editForm.isPinned,
         isPrintReady: editForm.isPrintReady,
+        linkedLocalDesignId: editForm.linkedLocalDesignId || null,
         clientNote: editForm.clientNote.trim(),
       });
 
@@ -201,6 +242,7 @@ export default function AdminMmfOverrides() {
         isHidden: false,
         isPinned: false,
         isPrintReady: false,
+        linkedLocalDesignId: "",
         clientNote: "",
       });
 
@@ -311,6 +353,32 @@ export default function AdminMmfOverrides() {
                 className="mt-2 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700">
+                Linked local design
+              </label>
+              <select
+                value={form.linkedLocalDesignId}
+                onChange={(event) =>
+                  setForm((currentForm) => ({
+                    ...currentForm,
+                    linkedLocalDesignId: event.target.value,
+                  }))
+                }
+                className="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+              >
+                <option value="">No linked printable file</option>
+                {localDesigns.map((design) => (
+                  <option key={design.id} value={design.id}>
+                    #{design.id} {design.title}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-slate-500">
+                Required for direct MMF quote generation.
+              </p>
+            </div>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-4">
@@ -385,6 +453,7 @@ export default function AdminMmfOverrides() {
                   <th className="px-4 py-3 font-medium">Print Ready</th>
                   <th className="px-4 py-3 font-medium">Pinned</th>
                   <th className="px-4 py-3 font-medium">Hidden</th>
+                  <th className="px-4 py-3 font-medium">Linked Design</th>
                   <th className="px-4 py-3 font-medium">Client Note</th>
                   <th className="px-4 py-3 font-medium">Updated</th>
                   <th className="px-4 py-3 font-medium">Actions</th>
@@ -452,6 +521,32 @@ export default function AdminMmfOverrides() {
                         <StatusBadge label="Hidden" tone="red" />
                       ) : (
                         <StatusBadge label="Visible" />
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3 text-slate-600">
+                      {editingOverrideId === override.id ? (
+                        <select
+                          value={editForm.linkedLocalDesignId}
+                          onChange={(event) =>
+                            setEditForm((currentForm) => ({
+                              ...currentForm,
+                              linkedLocalDesignId: event.target.value,
+                            }))
+                          }
+                          className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+                        >
+                          <option value="">None</option>
+                          {localDesigns.map((design) => (
+                            <option key={design.id} value={design.id}>
+                              #{design.id} {design.title}
+                            </option>
+                          ))}
+                        </select>
+                      ) : override.linkedLocalDesignId ? (
+                        `#${override.linkedLocalDesignId}`
+                      ) : (
+                        "-"
                       )}
                     </td>
 

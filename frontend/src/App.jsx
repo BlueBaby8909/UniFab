@@ -9,7 +9,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import ChangePassword from "./pages/ChangePassword";
+import AccountSettings from "./pages/AccountSettings";
 import VerifyEmail from "./pages/VerifyEmail";
 
 import ClientDashboard from "./pages/ClientDashboard";
@@ -25,6 +25,7 @@ import AdminMaterials from "./pages/admin/AdminMaterials";
 import AdminSlicerProfiles from "./pages/admin/AdminSlicerProfiles";
 import AdminPricingConfig from "./pages/admin/AdminPricingConfig";
 import AdminMaintenance from "./pages/admin/AdminMaintenance";
+import AdminPrinters from "./pages/admin/AdminPrinters";
 
 import ProtectedRoute from "./components/routes/ProtectedRoute";
 import AdminRoute from "./components/routes/AdminRoute";
@@ -37,6 +38,8 @@ import DesignLibrary from "./pages/DesignLibrary";
 import LocalDesignDetail from "./pages/LocalDesignDetail";
 import MmfDesignDetail from "./pages/MmfDesignDetail";
 import NotFound from "./pages/NotFound";
+import Printers from "./pages/Printers";
+import SystemStatus from "./pages/SystemStatus";
 
 export default function App() {
   return (
@@ -47,6 +50,8 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/quote" element={<UploadQuote />} />
             <Route path="/quote/:quoteToken" element={<QuoteReview />} />
+            <Route path="/printers" element={<Printers />} />
+
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -55,10 +60,10 @@ export default function App() {
               element={<ResetPassword />}
             />
             <Route
-              path="/change-password"
+              path="/account-settings"
               element={
                 <ProtectedRoute>
-                  <ChangePassword />
+                  <AccountSettings />
                 </ProtectedRoute>
               }
             />
@@ -172,6 +177,14 @@ export default function App() {
               }
             />
             <Route
+              path="/admin/printers"
+              element={
+                <AdminRoute>
+                  <AdminPrinters />
+                </AdminRoute>
+              }
+            />
+            <Route
               path="/admin/maintenance"
               element={
                 <AdminRoute>
@@ -179,12 +192,13 @@ export default function App() {
                 </AdminRoute>
               }
             />
+            <Route path="admin/status" element={<SystemStatus />} />
             <Route
               path="/requests/:requestId"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <PrintRequestDetail />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route

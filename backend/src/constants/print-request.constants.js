@@ -2,6 +2,7 @@ export const PRINT_REQUEST_SOURCE_TYPES = Object.freeze({
   UPLOAD: "upload",
   LIBRARY: "library",
   DESIGN_REQUEST: "design_request",
+  MMF: "mmf",
 });
 
 export const PRINT_REQUEST_SOURCE_TYPE_VALUES = Object.freeze(

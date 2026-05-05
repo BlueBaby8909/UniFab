@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { getMyDesignRequests } from "../api/designRequests";
 import { ButtonLink } from "../components/ui/Button";
-import { Alert, EmptyState } from "../components/ui/Feedback";
+import { Alert, EmptyState, StatusBadge } from "../components/ui/Feedback";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
 import {
   DataTable,
@@ -68,42 +67,47 @@ export default function DesignRequests() {
             <TableWrap>
               <DataTable>
                 <TableHead>
-                <tr>
-                  <th className="px-4 py-3 font-medium">Title</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Quantity</th>
-                  <th className="px-4 py-3 font-medium">Created</th>
-                  <th className="px-4 py-3 font-medium">Action</th>
-                </tr>
+                  <tr>
+                    <th className="px-4 py-3 font-medium">Title</th>
+                    <th className="px-4 py-3 font-medium">Status</th>
+                    <th className="px-4 py-3 font-medium">Quantity</th>
+                    <th className="px-4 py-3 font-medium">Created</th>
+                    <th className="px-4 py-3 font-medium">Action</th>
+                  </tr>
                 </TableHead>
 
                 <TableBody>
-                {designRequests.map((request) => (
-                  <tr key={request.id}>
-                    <td className="px-4 py-3 font-medium text-slate-950">
-                      {request.title}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {request.status}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {request.quantity}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {request.createdAt
-                        ? new Date(request.createdAt).toLocaleDateString()
-                        : "-"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        to={`/design-requests/${request.id}`}
-                        className="font-semibold text-slate-950 underline"
-                      >
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                  {designRequests.map((request) => (
+                    <tr key={request.id}>
+                      <td className="px-4 py-3 font-medium text-slate-950">
+                        {request.title}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge
+                          tone={getDesignRequestStatusTone(request.status)}
+                        >
+                          {request.status}
+                        </StatusBadge>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {request.quantity}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {request.createdAt
+                          ? new Date(request.createdAt).toLocaleDateString()
+                          : "-"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <ButtonLink
+                          to={`/design-requests/${request.id}`}
+                          variant="secondary"
+                          size="sm"
+                        >
+                          View
+                        </ButtonLink>
+                      </td>
+                    </tr>
+                  ))}
                 </TableBody>
               </DataTable>
             </TableWrap>
@@ -112,4 +116,20 @@ export default function DesignRequests() {
       </Panel>
     </PageShell>
   );
+}
+
+function getDesignRequestStatusTone(status) {
+  if (status === "completed" || status === "approved") {
+    return "success";
+  }
+
+  if (status === "rejected") {
+    return "danger";
+  }
+
+  if (status === "under_review") {
+    return "warning";
+  }
+
+  return "neutral";
 }

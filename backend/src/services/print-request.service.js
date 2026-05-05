@@ -207,6 +207,7 @@ async function submitPrintRequest({ clientId, user, body, file }) {
       [
         PRINT_REQUEST_SOURCE_TYPES.LIBRARY,
         PRINT_REQUEST_SOURCE_TYPES.DESIGN_REQUEST,
+        PRINT_REQUEST_SOURCE_TYPES.MMF,
       ].includes(quoteRecord.source_type) &&
       quoteRecord.design_id
     ) {

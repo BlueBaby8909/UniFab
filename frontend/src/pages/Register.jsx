@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { registerUser } from "../api/auth";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 import { Alert } from "../components/ui/Feedback";
 import { Field, SelectInput, TextInput } from "../components/ui/Form";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
@@ -124,9 +123,9 @@ export default function Register() {
             <Alert type="success">
               {successMessage}
               <div className="mt-2">
-                <Link to="/login" className="font-semibold underline">
+                <ButtonLink to="/login" variant="secondary" size="sm">
                   Go to login
-                </Link>
+                </ButtonLink>
               </div>
             </Alert>
           )}

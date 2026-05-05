@@ -69,6 +69,18 @@ const searchDesignLibraryValidator = () => {
       .bail()
       .isIn(ALLOWED_ORDER_VALUES)
       .withMessage("Order must be either asc or desc"),
+
+    query("category")
+      .optional()
+      .trim()
+      .isLength({ min: 1, max: 120 })
+      .withMessage("Category filter must be between 1 and 120 characters"),
+
+    query("tag")
+      .optional()
+      .trim()
+      .isLength({ min: 1, max: 120 })
+      .withMessage("Tag filter must be between 1 and 120 characters"),
   ];
 };
 
@@ -133,6 +145,48 @@ const createLocalDesignValidator = () => {
       .bail()
       .isLength({ max: 255 })
       .withMessage("License type must not exceed 255 characters"),
+
+    body("categoryId")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Category ID must be a positive integer"),
+
+    body("categoryName")
+      .optional({ checkFalsy: true })
+      .trim()
+      .isLength({ min: 1, max: 100 })
+      .withMessage("Category name must be between 1 and 100 characters"),
+
+    body("tagIds")
+      .optional()
+      .custom((value) => {
+        if (Array.isArray(value)) {
+          return value.every((item) => Number.isInteger(Number(item)) && Number(item) > 0);
+        }
+
+        if (typeof value === "string") {
+          return value
+            .split(",")
+            .filter(Boolean)
+            .every((item) => Number.isInteger(Number(item)) && Number(item) > 0);
+        }
+
+        throw new Error("Tag IDs must be an array or comma-separated list");
+      }),
+
+    body("tagNames")
+      .optional()
+      .custom((value) => {
+        const tagNames = Array.isArray(value)
+          ? value
+          : String(value)
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean);
+
+        return tagNames.every((item) => item.length >= 1 && item.length <= 100);
+      })
+      .withMessage("Each tag name must be between 1 and 100 characters"),
   ];
 };
 
@@ -182,6 +236,48 @@ const updateLocalDesignValidator = () => {
       .isLength({ max: 255 })
       .withMessage("License type must not exceed 255 characters"),
 
+    body("categoryId")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Category ID must be a positive integer"),
+
+    body("categoryName")
+      .optional({ checkFalsy: true })
+      .trim()
+      .isLength({ min: 1, max: 100 })
+      .withMessage("Category name must be between 1 and 100 characters"),
+
+    body("tagIds")
+      .optional()
+      .custom((value) => {
+        if (Array.isArray(value)) {
+          return value.every((item) => Number.isInteger(Number(item)) && Number(item) > 0);
+        }
+
+        if (typeof value === "string") {
+          return value
+            .split(",")
+            .filter(Boolean)
+            .every((item) => Number.isInteger(Number(item)) && Number(item) > 0);
+        }
+
+        throw new Error("Tag IDs must be an array or comma-separated list");
+      }),
+
+    body("tagNames")
+      .optional()
+      .custom((value) => {
+        const tagNames = Array.isArray(value)
+          ? value
+          : String(value)
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean);
+
+        return tagNames.every((item) => item.length >= 1 && item.length <= 100);
+      })
+      .withMessage("Each tag name must be between 1 and 100 characters"),
+
     body("isActive")
       .optional()
       .isIn(["true", "false", "1", "0", "yes", "no"])
@@ -194,6 +290,10 @@ const updateLocalDesignValidator = () => {
         Object.prototype.hasOwnProperty.call(req.body, "material") ||
         Object.prototype.hasOwnProperty.call(req.body, "dimensions") ||
         Object.prototype.hasOwnProperty.call(req.body, "licenseType") ||
+        Object.prototype.hasOwnProperty.call(req.body, "categoryId") ||
+        Object.prototype.hasOwnProperty.call(req.body, "categoryName") ||
+        Object.prototype.hasOwnProperty.call(req.body, "tagIds") ||
+        Object.prototype.hasOwnProperty.call(req.body, "tagNames") ||
         Object.prototype.hasOwnProperty.call(req.body, "isActive");
 
       const hasUploadedDesignFile =
@@ -252,6 +352,11 @@ const createDesignOverrideValidator = () => {
       .withMessage(
         "isPrintReady must be one of: true, false, 1, 0, yes, no",
       ),
+
+    body("linkedLocalDesignId")
+      .optional({ nullable: true, checkFalsy: true })
+      .isInt({ min: 1 })
+      .withMessage("Linked local design ID must be a positive integer"),
 
     body("clientNote")
       .optional()
@@ -313,6 +418,11 @@ const updateDesignOverrideValidator = () => {
         "isPrintReady must be one of: true, false, 1, 0, yes, no",
       ),
 
+    body("linkedLocalDesignId")
+      .optional({ nullable: true, checkFalsy: true })
+      .isInt({ min: 1 })
+      .withMessage("Linked local design ID must be a positive integer"),
+
     body("clientNote")
       .optional()
       .trim()
@@ -327,6 +437,7 @@ const updateDesignOverrideValidator = () => {
         Object.prototype.hasOwnProperty.call(req.body, "isHidden") ||
         Object.prototype.hasOwnProperty.call(req.body, "isPinned") ||
         Object.prototype.hasOwnProperty.call(req.body, "isPrintReady") ||
+        Object.prototype.hasOwnProperty.call(req.body, "linkedLocalDesignId") ||
         Object.prototype.hasOwnProperty.call(req.body, "clientNote");
 
       if (!hasAnyUpdatableField) {

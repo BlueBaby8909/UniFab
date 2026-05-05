@@ -17,6 +17,10 @@ export function searchDesignLibrary(params = {}) {
   return apiRequest(`/designs${buildQueryString(params)}`);
 }
 
+export function getDesignTaxonomy() {
+  return apiRequest("/designs/taxonomy");
+}
+
 export function getLocalDesignById(designId) {
   return apiRequest(`/designs/local/${designId}`);
 }

@@ -11,6 +11,7 @@ import {
   deactivateLocalDesign,
   archiveLocalDesign,
   deleteLocalDesign,
+  getDesignTaxonomy,
   listDesignOverrides,
   createDesignOverride,
   updateDesignOverride,
@@ -59,6 +60,8 @@ router
   );
 
 router.route("/local").get(publicReadRateLimiter, listLocalDesigns);
+
+router.route("/taxonomy").get(publicReadRateLimiter, getDesignTaxonomy);
 
 router
   .route("/admin/local")

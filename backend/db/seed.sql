@@ -89,3 +89,41 @@ ON DUPLICATE KEY UPDATE
   version_number = VALUES(version_number),
   is_active = VALUES(is_active),
   uploaded_by = VALUES(uploaded_by);
+
+INSERT INTO printers (
+  id,
+  name,
+  model,
+  technology,
+  build_volume,
+  nozzle_size,
+  supported_materials,
+  status,
+  is_public,
+  display_order,
+  notes
+)
+VALUES (
+  1,
+  'Fabrication Lab FDM Printer',
+  'Creality Ender 3 V3 SE',
+  'FDM',
+  '220 x 220 x 250 mm',
+  '0.4mm',
+  JSON_ARRAY('PLA', 'PETG'),
+  'active',
+  TRUE,
+  10,
+  'Used for standard student and faculty print requests.'
+)
+ON DUPLICATE KEY UPDATE
+  name = VALUES(name),
+  model = VALUES(model),
+  technology = VALUES(technology),
+  build_volume = VALUES(build_volume),
+  nozzle_size = VALUES(nozzle_size),
+  supported_materials = VALUES(supported_materials),
+  status = VALUES(status),
+  is_public = VALUES(is_public),
+  display_order = VALUES(display_order),
+  notes = VALUES(notes);

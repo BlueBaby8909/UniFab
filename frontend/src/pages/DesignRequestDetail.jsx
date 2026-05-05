@@ -4,7 +4,7 @@ import { getMyDesignRequestById } from "../api/designRequests";
 import { getActiveMaterials } from "../api/materials";
 import { calculateDesignRequestQuote } from "../api/quotes";
 import { Button, ButtonLink } from "../components/ui/Button";
-import { Alert, StatusBadge } from "../components/ui/Feedback";
+import { Alert, EmptyState, StatusBadge } from "../components/ui/Feedback";
 import { Field, SelectInput, TextInput } from "../components/ui/Form";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
 
@@ -145,11 +145,26 @@ export default function DesignRequestDetail() {
           {error}
         </Alert>
 
+        {!isLoading && !error && !designRequest && (
+          <EmptyState
+            className="mt-6"
+            title="Design request not found."
+            description="The request may have been removed or is no longer available to your account."
+            action={
+              <ButtonLink to="/design-requests" variant="secondary">
+                Back to design requests
+              </ButtonLink>
+            }
+          />
+        )}
+
         {designRequest && (
           <div className="mt-6 space-y-6">
-            <section className="grid gap-4 rounded-lg border border-slate-200 p-4 sm:grid-cols-2">
+            <Panel className="grid gap-4 bg-slate-50 shadow-none sm:grid-cols-2">
               <SummaryItem label="Status">
-                <StatusBadge>{designRequest.status}</StatusBadge>
+                <StatusBadge tone={getDesignRequestStatusTone(designRequest.status)}>
+                  {designRequest.status}
+                </StatusBadge>
               </SummaryItem>
               <SummaryItem label="Quantity">{designRequest.quantity}</SummaryItem>
               <SummaryItem label="Preferred material">
@@ -168,7 +183,7 @@ export default function DesignRequestDetail() {
                   ? new Date(designRequest.updatedAt).toLocaleString()
                   : "-"}
               </SummaryItem>
-            </section>
+            </Panel>
 
             <TextSection title="Description">
               {designRequest.description}
@@ -182,7 +197,7 @@ export default function DesignRequestDetail() {
 
             {Array.isArray(designRequest.referenceFiles) &&
               designRequest.referenceFiles.length > 0 && (
-                <section className="rounded-lg border border-slate-200 p-4">
+                <Panel className="shadow-none">
                   <h2 className="text-lg font-semibold">Reference files</h2>
                   <ul className="mt-3 space-y-2 text-sm">
                     {designRequest.referenceFiles.map((file) => (
@@ -198,21 +213,21 @@ export default function DesignRequestDetail() {
                       </li>
                     ))}
                   </ul>
-                </section>
+                </Panel>
               )}
 
             {designRequest.resultDesignId && (
-              <section className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
+              <Alert type="success">
                 <h2 className="text-lg font-semibold">Completed design</h2>
                 <p className="mt-2 text-sm">
                   The lab linked this request to local design #
                   {designRequest.resultDesignId}.
                 </p>
-              </section>
+              </Alert>
             )}
 
             {canQuoteCompletedDesign && (
-              <section className="rounded-lg border border-slate-200 p-4">
+              <Panel className="shadow-none">
                 <h2 className="text-lg font-semibold">
                   Quote completed design
                 </h2>
@@ -240,7 +255,7 @@ export default function DesignRequestDetail() {
                     </Button>
                   </div>
                 </form>
-              </section>
+              </Panel>
             )}
           </div>
         )}
@@ -260,10 +275,10 @@ function SummaryItem({ label, children }) {
 
 function TextSection({ title, children }) {
   return (
-    <section className="rounded-lg border border-slate-200 p-4">
+    <Panel className="shadow-none">
       <h2 className="text-lg font-semibold">{title}</h2>
       <p className="mt-3 whitespace-pre-wrap text-slate-700">{children}</p>
-    </section>
+    </Panel>
   );
 }
 
@@ -321,4 +336,20 @@ function QuoteFields({ form, materials, isLoadingMaterials, updateField }) {
       </Field>
     </>
   );
+}
+
+function getDesignRequestStatusTone(status) {
+  if (status === "completed" || status === "approved") {
+    return "success";
+  }
+
+  if (status === "rejected") {
+    return "danger";
+  }
+
+  if (status === "under_review") {
+    return "warning";
+  }
+
+  return "neutral";
 }

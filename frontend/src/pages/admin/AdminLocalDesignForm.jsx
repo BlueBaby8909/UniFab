@@ -5,6 +5,7 @@ import {
   createAdminLocalDesign,
   deleteAdminLocalDesign,
   getAdminLocalDesignById,
+  getDesignTaxonomy,
   updateAdminLocalDesign,
 } from "../../api/designs";
 
@@ -20,9 +21,12 @@ export default function AdminLocalDesignForm() {
     material: "",
     dimensions: "",
     licenseType: "",
+    categoryName: "",
+    tagNames: "",
     isActive: "true",
     archivedAt: null,
   });
+  const [taxonomy, setTaxonomy] = useState({ categories: [], tags: [] });
   const [designFile, setDesignFile] = useState(null);
   const [thumbnailImage, setThumbnailImage] = useState(null);
   const [isLoading, setIsLoading] = useState(isEditing);
@@ -32,6 +36,23 @@ export default function AdminLocalDesignForm() {
   const [persistedIsActive, setPersistedIsActive] = useState(true);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+
+  useEffect(() => {
+    async function loadTaxonomy() {
+      try {
+        const data = await getDesignTaxonomy();
+        const payload = data.data || data;
+        setTaxonomy({
+          categories: payload.categories || [],
+          tags: payload.tags || [],
+        });
+      } catch {
+        setTaxonomy({ categories: [], tags: [] });
+      }
+    }
+
+    loadTaxonomy();
+  }, []);
 
   useEffect(() => {
     if (!isEditing) {
@@ -52,6 +73,8 @@ export default function AdminLocalDesignForm() {
           material: localDesign.material || "",
           dimensions: localDesign.dimensions || "",
           licenseType: localDesign.licenseType || "",
+          categoryName: localDesign.category?.name || "",
+          tagNames: (localDesign.tags || []).map((tag) => tag.name).join(", "),
           isActive: localDesign.isActive ? "true" : "false",
           archivedAt: localDesign.archivedAt || null,
         });
@@ -98,6 +121,8 @@ export default function AdminLocalDesignForm() {
       formData.append("material", form.material);
       formData.append("dimensions", form.dimensions);
       formData.append("licenseType", form.licenseType);
+      formData.append("categoryName", form.categoryName);
+      formData.append("tagNames", form.tagNames);
 
       if (isEditing) {
         formData.append("isActive", form.isActive);
@@ -290,6 +315,51 @@ export default function AdminLocalDesignForm() {
                   }
                   className="mt-2 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Category
+                </label>
+                <input
+                  type="text"
+                  list="design-category-options"
+                  value={form.categoryName}
+                  onChange={(event) =>
+                    updateField("categoryName", event.target.value)
+                  }
+                  className="mt-2 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                />
+                <datalist id="design-category-options">
+                  {taxonomy.categories.map((category) => (
+                    <option key={category.id} value={category.name} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-slate-700">
+                  Tags
+                </label>
+                <input
+                  type="text"
+                  list="design-tag-options"
+                  value={form.tagNames}
+                  onChange={(event) =>
+                    updateField("tagNames", event.target.value)
+                  }
+                  placeholder="Example: prototype, lab-ready, engineering"
+                  className="mt-2 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                />
+                <datalist id="design-tag-options">
+                  {taxonomy.tags.map((tag) => (
+                    <option key={tag.id} value={tag.name} />
+                  ))}
+                </datalist>
+                <p className="mt-1 text-xs text-slate-500">
+                  Use comma-separated tags. New categories and tags are created
+                  automatically.
+                </p>
               </div>
 
               {isEditing && (

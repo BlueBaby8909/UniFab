@@ -8,6 +8,7 @@ async function getAllDesignOverrides() {
       is_hidden,
       is_pinned,
       is_print_ready,
+      linked_local_design_id,
       client_note,
       created_by,
       updated_by,
@@ -29,6 +30,7 @@ async function getDesignOverrideById(overrideId) {
       is_hidden,
       is_pinned,
       is_print_ready,
+      linked_local_design_id,
       client_note,
       created_by,
       updated_by,
@@ -51,6 +53,7 @@ async function getDesignOverrideByMmfObjectId(mmfObjectId) {
       is_hidden,
       is_pinned,
       is_print_ready,
+      linked_local_design_id,
       client_note,
       created_by,
       updated_by,
@@ -70,6 +73,7 @@ async function createDesignOverride({
   isHidden = false,
   isPinned = false,
   isPrintReady = false,
+  linkedLocalDesignId = null,
   clientNote = null,
   createdBy,
   updatedBy,
@@ -80,11 +84,12 @@ async function createDesignOverride({
       is_hidden,
       is_pinned,
       is_print_ready,
+      linked_local_design_id,
       client_note,
       created_by,
       updated_by
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const [result] = await pool.query(sql, [
@@ -92,6 +97,7 @@ async function createDesignOverride({
     isHidden,
     isPinned,
     isPrintReady,
+    linkedLocalDesignId,
     clientNote,
     createdBy,
     updatedBy,
@@ -107,6 +113,7 @@ async function updateDesignOverrideById(overrideId, payload) {
       is_hidden = ?,
       is_pinned = ?,
       is_print_ready = ?,
+      linked_local_design_id = ?,
       client_note = ?,
       updated_by = ?
     WHERE id = ?
@@ -116,6 +123,7 @@ async function updateDesignOverrideById(overrideId, payload) {
     payload.isHidden,
     payload.isPinned,
     payload.isPrintReady,
+    payload.linkedLocalDesignId ?? null,
     payload.clientNote,
     payload.updatedBy,
     overrideId,
@@ -160,6 +168,7 @@ async function getDesignOverridesByMmfObjectIds(mmfObjectIds) {
       is_hidden,
       is_pinned,
       is_print_ready,
+      linked_local_design_id,
       client_note,
       created_by,
       updated_by,

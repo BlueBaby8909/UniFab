@@ -1,6 +1,7 @@
 import express from "express";
 import {
   calculateDesignRequestQuote,
+  calculateMmfDesignQuote,
   calculateQuote,
   calculateLocalDesignQuote,
   getQuoteByToken,
@@ -11,6 +12,7 @@ import { quoteUploadMiddleware } from "../middlewares/quote-upload.middleware.js
 import {
   calculateDesignRequestQuoteValidator,
   calculateLocalDesignQuoteValidator,
+  calculateMmfDesignQuoteValidator,
   calculateQuoteValidator,
   cleanupExpiredQuotesValidator,
   quoteTokenValidator,
@@ -52,6 +54,15 @@ router
     calculateDesignRequestQuoteValidator(),
     validate,
     calculateDesignRequestQuote,
+  );
+
+router
+  .route("/mmf/:objectId")
+  .post(
+    quoteCalculationRateLimiter,
+    calculateMmfDesignQuoteValidator(),
+    validate,
+    calculateMmfDesignQuote,
   );
 
 router

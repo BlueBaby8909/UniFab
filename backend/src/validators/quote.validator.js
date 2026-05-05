@@ -60,6 +60,15 @@ const calculateDesignRequestQuoteValidator = () => {
   ];
 };
 
+const calculateMmfDesignQuoteValidator = () => {
+  return [
+    param("objectId")
+      .isInt({ min: 1 })
+      .withMessage("Object ID must be a positive integer"),
+    ...calculateQuoteValidator(),
+  ];
+};
+
 const updateQuoteValidator = () => {
   return [
     body("machine_hour_rate")
@@ -145,6 +154,7 @@ export {
   calculateQuoteValidator,
   calculateLocalDesignQuoteValidator,
   calculateDesignRequestQuoteValidator,
+  calculateMmfDesignQuoteValidator,
   updateQuoteValidator,
   quoteTokenValidator,
   cleanupExpiredQuotesValidator,

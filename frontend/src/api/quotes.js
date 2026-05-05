@@ -25,6 +25,13 @@ export function calculateDesignRequestQuote(requestId, payload) {
   });
 }
 
+export function calculateMmfDesignQuote(objectId, payload) {
+  return apiRequest(`/quotes/mmf/${objectId}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function cleanupExpiredQuotes(limit = 100) {
   return apiRequest(`/quotes/expired?limit=${encodeURIComponent(limit)}`, {
     method: "DELETE",

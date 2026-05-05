@@ -1,19 +1,41 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { searchDesignLibrary } from "../api/designs";
+import { getDesignTaxonomy, searchDesignLibrary } from "../api/designs";
 import { Button } from "../components/ui/Button";
 import { Alert, EmptyState, StatusBadge } from "../components/ui/Feedback";
-import { TextInput } from "../components/ui/Form";
+import { SelectInput, TextInput } from "../components/ui/Form";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
 
 export default function DesignLibrary() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
   const [submittedSearch, setSubmittedSearch] = useState("");
+  const [submittedCategory, setSubmittedCategory] = useState("");
+  const [submittedTag, setSubmittedTag] = useState("");
   const [localDesigns, setLocalDesigns] = useState([]);
   const [mmfItems, setMmfItems] = useState([]);
   const [mmfStatus, setMmfStatus] = useState(null);
+  const [taxonomy, setTaxonomy] = useState({ categories: [], tags: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadTaxonomy() {
+      try {
+        const data = await getDesignTaxonomy();
+        const payload = data.data || data;
+        setTaxonomy({
+          categories: payload.categories || [],
+          tags: payload.tags || [],
+        });
+      } catch {
+        setTaxonomy({ categories: [], tags: [] });
+      }
+    }
+
+    loadTaxonomy();
+  }, []);
 
   useEffect(() => {
     async function loadDesigns() {
@@ -21,9 +43,21 @@ export default function DesignLibrary() {
         setIsLoading(true);
         setError("");
 
-        const data = await searchDesignLibrary(
-          submittedSearch ? { q: submittedSearch } : {},
-        );
+        const params = {};
+
+        if (submittedSearch) {
+          params.q = submittedSearch;
+        }
+
+        if (submittedCategory) {
+          params.category = submittedCategory;
+        }
+
+        if (submittedTag) {
+          params.tag = submittedTag;
+        }
+
+        const data = await searchDesignLibrary(params);
 
         const payload = data.data || data;
 
@@ -41,11 +75,13 @@ export default function DesignLibrary() {
     }
 
     loadDesigns();
-  }, [submittedSearch]);
+  }, [submittedSearch, submittedCategory, submittedTag]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
     setSubmittedSearch(searchTerm.trim());
+    setSubmittedCategory(categoryFilter);
+    setSubmittedTag(tagFilter);
   };
 
   return (
@@ -57,7 +93,7 @@ export default function DesignLibrary() {
             description="Browse lab-approved local designs and search MyMiniFactory references."
           />
 
-          <form onSubmit={handleSubmit} className="flex gap-2">
+          <form onSubmit={handleSubmit} className="flex flex-wrap gap-2">
             <TextInput
               type="search"
               value={searchTerm}
@@ -65,9 +101,31 @@ export default function DesignLibrary() {
               placeholder="Search designs"
               className="w-64"
             />
-            <Button type="submit">
-              Search
-            </Button>
+            <SelectInput
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+              className="w-44"
+            >
+              <option value="">All categories</option>
+              {taxonomy.categories.map((category) => (
+                <option key={category.id} value={category.slug}>
+                  {category.name}
+                </option>
+              ))}
+            </SelectInput>
+            <SelectInput
+              value={tagFilter}
+              onChange={(event) => setTagFilter(event.target.value)}
+              className="w-40"
+            >
+              <option value="">All tags</option>
+              {taxonomy.tags.map((tag) => (
+                <option key={tag.id} value={tag.slug}>
+                  {tag.name}
+                </option>
+              ))}
+            </SelectInput>
+            <Button type="submit">Search</Button>
           </form>
         </div>
 
@@ -112,6 +170,14 @@ export default function DesignLibrary() {
                           Material: {design.material}
                         </p>
                       )}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {design.category && (
+                          <StatusBadge>{design.category.name}</StatusBadge>
+                        )}
+                        {(design.tags || []).map((tag) => (
+                          <StatusBadge key={tag.id}>{tag.name}</StatusBadge>
+                        ))}
+                      </div>
                     </Link>
                   ))}
                 </div>

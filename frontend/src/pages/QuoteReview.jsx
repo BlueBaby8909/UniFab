@@ -92,9 +92,9 @@ export default function QuoteReview() {
         {quote && (
           <div className="mt-6 grid gap-4 rounded-lg border border-slate-200 p-4">
             <div>
-              <p className="text-sm font-medium text-slate-500">File</p>
+              <p className="text-sm font-medium text-slate-500">Source</p>
               <p className="font-semibold text-slate-950">
-                {quote.fileOriginalName || "Uploaded model"}
+                {getQuoteSourceLabel(quote)}
               </p>
             </div>
 
@@ -193,4 +193,24 @@ export default function QuoteReview() {
       </Panel>
     </PageShell>
   );
+}
+
+function getQuoteSourceLabel(quote) {
+  if (quote.fileOriginalName) {
+    return quote.fileOriginalName;
+  }
+
+  if (quote.sourceType === "library") {
+    return quote.designSnapshot?.title || "Local design";
+  }
+
+  if (quote.sourceType === "design_request") {
+    return quote.designSnapshot?.designRequest?.title || "Completed design request";
+  }
+
+  if (quote.sourceType === "mmf") {
+    return quote.designSnapshot?.name || "MyMiniFactory design";
+  }
+
+  return "Uploaded model";
 }

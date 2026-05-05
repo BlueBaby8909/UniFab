@@ -7,10 +7,12 @@ import {
   getValidQuoteRecordByToken,
 } from "../models/quote-record.model.js";
 import { getLocalDesignById } from "../models/local-design.model.js";
+import { getDesignOverrideByMmfObjectId } from "../models/design-overrides.model.js";
 import {
   getDesignRequestById,
   getDesignRequestByIdForOwner,
 } from "../models/design-requests.model.js";
+import { getObjectById } from "../services/myminifactory.service.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
@@ -100,6 +102,30 @@ function buildDesignRequestSnapshot(designRequest) {
     referenceFiles: parseJsonSafely(designRequest.reference_files) || [],
     resultDesignId: designRequest.result_design_id,
     status: designRequest.status,
+    capturedAt: new Date().toISOString(),
+  };
+}
+
+function buildMmfObjectSnapshot(mmfObject, override, linkedLocalDesign) {
+  return {
+    source: "myminifactory",
+    id: mmfObject.id,
+    name: mmfObject.name,
+    url: mmfObject.url,
+    description: mmfObject.description,
+    dimensions: mmfObject.dimensions,
+    materialQuantity: mmfObject.materialQuantity,
+    license: mmfObject.license,
+    designer: mmfObject.designer,
+    tags: mmfObject.tags || [],
+    categories: mmfObject.categories || [],
+    override: {
+      id: override.id,
+      isPrintReady: Boolean(override.is_print_ready),
+      clientNote: override.client_note,
+      linkedLocalDesignId: override.linked_local_design_id,
+    },
+    linkedLocalDesign: buildLocalDesignSnapshot(linkedLocalDesign),
     capturedAt: new Date().toISOString(),
   };
 }
@@ -439,6 +465,127 @@ const calculateDesignRequestQuote = asyncHandler(async (req, res) => {
   );
 });
 
+const calculateMmfDesignQuote = asyncHandler(async (req, res) => {
+  const mmfObject = await getObjectById(req.params.objectId);
+  const override = await getDesignOverrideByMmfObjectId(req.params.objectId);
+
+  if (!override || override.is_hidden) {
+    throw new ApiError(404, "MyMiniFactory design is not available");
+  }
+
+  if (!override.is_print_ready) {
+    throw new ApiError(
+      400,
+      "MyMiniFactory design must be approved by the lab before quoting",
+    );
+  }
+
+  if (!override.linked_local_design_id) {
+    throw new ApiError(
+      400,
+      "MyMiniFactory design is approved but not linked to a printable local file",
+    );
+  }
+
+  const linkedLocalDesign = await getLocalDesignById(
+    override.linked_local_design_id,
+  );
+
+  if (!linkedLocalDesign) {
+    throw new ApiError(404, "Linked printable local design not found");
+  }
+
+  if (!linkedLocalDesign.file_url) {
+    throw new ApiError(400, "Linked local design does not have a printable file");
+  }
+
+  const modelPath = getManagedLocalDesignAbsolutePath(
+    linkedLocalDesign.file_url,
+    "design",
+  );
+
+  if (!modelPath || !fs.existsSync(modelPath)) {
+    throw new ApiError(410, "Linked local design file is no longer available");
+  }
+
+  const { material, quality, infill, quantity } = req.body;
+  const normalizedInfill = Number(infill);
+  const normalizedQuantity = Number(quantity);
+
+  const materialRow = await getMaterialByKey(material);
+
+  if (!materialRow) {
+    throw new ApiError(
+      400,
+      `Material is not configured or inactive: ${material}`,
+    );
+  }
+
+  const pricingConfig = await getCurrentPricingConfig();
+
+  if (!pricingConfig) {
+    throw new ApiError(500, "Pricing config not found");
+  }
+
+  const slicerResult = await runSliceEstimate({
+    modelPath,
+    material: materialRow.material_key,
+    quality,
+    infill: normalizedInfill,
+    quantity: normalizedQuantity,
+  });
+
+  const result = calculateQuoteEstimate({
+    slicerResult,
+    pricingConfig,
+    materialCostPerGram: materialRow.material_cost_per_gram,
+    quantity: normalizedQuantity,
+  });
+
+  const designSnapshot = buildMmfObjectSnapshot(
+    mmfObject,
+    override,
+    linkedLocalDesign,
+  );
+  const expiresAt = new Date(Date.now() + QUOTE_TTL_MINUTES * 60 * 1000);
+  const { quoteToken, quoteRecord } = await createQuoteRecord({
+    sourceType: "mmf",
+    designId: linkedLocalDesign.id,
+    designRequestId: null,
+    fileUrl: linkedLocalDesign.file_url,
+    fileOriginalName: null,
+    fileMimeType: null,
+    fileSize: null,
+    material: materialRow.material_key,
+    printQuality: quality,
+    infill: normalizedInfill,
+    quantity: normalizedQuantity,
+    estimatedCost: result.totalPrice,
+    designSnapshot,
+    quoteSnapshot: {
+      ...result,
+      sourceType: "mmf",
+      librarySource: "myminifactory",
+      mmfObject: designSnapshot,
+    },
+    pricingConfigSnapshot: pricingConfig,
+    materialSnapshot: materialRow,
+    expiresAt,
+  });
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        ...result,
+        quoteToken,
+        quoteExpiresAt: quoteRecord.expires_at,
+      },
+      "MyMiniFactory design quote calculated successfully",
+    ),
+  );
+});
+
 const cleanupExpiredQuotes = asyncHandler(async (req, res) => {
   const limit = Number.parseInt(req.query.limit, 10);
   const result = await cleanupExpiredUnusedQuotes({
@@ -460,6 +607,7 @@ export {
   calculateQuote,
   calculateLocalDesignQuote,
   calculateDesignRequestQuote,
+  calculateMmfDesignQuote,
   getQuoteByToken,
   cleanupExpiredQuotes,
 };

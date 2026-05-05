@@ -4,7 +4,7 @@ import { getLocalDesignById } from "../api/designs";
 import { calculateLocalDesignQuote } from "../api/quotes";
 import { getActiveMaterials } from "../api/materials";
 import { Button, ButtonLink } from "../components/ui/Button";
-import { Alert, StatusBadge } from "../components/ui/Feedback";
+import { Alert, EmptyState, StatusBadge } from "../components/ui/Feedback";
 import { Field, SelectInput, TextInput } from "../components/ui/Form";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
 
@@ -128,9 +128,15 @@ export default function LocalDesignDetail() {
   return (
     <PageShell size="lg">
       <Panel>
-        <ButtonLink to="/designs" variant="secondary">
-          Back to designs
-        </ButtonLink>
+        <PageHeader
+          title={design?.title || "Local design"}
+          description={design?.description || "Quote a lab-managed local design."}
+          action={
+            <ButtonLink to="/designs" variant="secondary">
+              Back to designs
+            </ButtonLink>
+          }
+        />
 
         {isLoading && (
           <p className="mt-6 text-slate-600">Loading local design...</p>
@@ -140,45 +146,47 @@ export default function LocalDesignDetail() {
           {error}
         </Alert>
 
+        {!isLoading && !error && !design && (
+          <EmptyState
+            className="mt-6"
+            title="Local design not found."
+            description="The design may be unavailable or has been removed from the library."
+            action={
+              <ButtonLink to="/designs" variant="secondary">
+                Back to designs
+              </ButtonLink>
+            }
+          />
+        )}
+
         {design && (
           <div className="mt-6 space-y-6">
-            <PageHeader title={design.title} description={design.description} />
-
-            <section className="grid gap-4 rounded-lg border border-slate-200 p-4 sm:grid-cols-2">
-              <div>
-                <p className="text-sm font-medium text-slate-500">Material</p>
-                <p className="font-semibold text-slate-950">
-                  {design.material || "-"}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-slate-500">Dimensions</p>
-                <p className="font-semibold text-slate-950">
-                  {design.dimensions || "-"}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-slate-500">License</p>
-                <p className="font-semibold text-slate-950">
-                  {design.licenseType || "-"}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-slate-500">Status</p>
-                <p className="mt-1">
+            <Panel className="grid gap-4 bg-slate-50 shadow-none sm:grid-cols-2">
+              <SummaryItem label="Material">{design.material || "-"}</SummaryItem>
+              <SummaryItem label="Dimensions">
+                {design.dimensions || "-"}
+              </SummaryItem>
+              <SummaryItem label="License">
+                {design.licenseType || "-"}
+              </SummaryItem>
+              <SummaryItem label="Category">
+                {design.category?.name || "-"}
+              </SummaryItem>
+              <SummaryItem label="Tags">
+                {(design.tags || []).length > 0
+                  ? design.tags.map((tag) => tag.name).join(", ")
+                  : "-"}
+              </SummaryItem>
+              <SummaryItem label="Status">
                   <StatusBadge tone={design.isActive ? "success" : "neutral"}>
-                  {design.isActive ? "Available" : "Unavailable"}
+                    {design.isActive ? "Available" : "Unavailable"}
                   </StatusBadge>
-                </p>
-              </div>
-            </section>
+              </SummaryItem>
+            </Panel>
 
             <form
               onSubmit={handleQuote}
-              className="rounded-lg border border-slate-200 p-4"
+              className="rounded-lg border border-slate-200 bg-white p-5 shadow-none sm:p-6"
             >
               <h2 className="text-lg font-semibold">Quote this design</h2>
 
@@ -261,5 +269,14 @@ export default function LocalDesignDetail() {
         )}
       </Panel>
     </PageShell>
+  );
+}
+
+function SummaryItem({ label, children }) {
+  return (
+    <div>
+      <p className="text-sm font-medium text-slate-500">{label}</p>
+      <div className="mt-1 font-semibold text-slate-950">{children}</div>
+    </div>
   );
 }

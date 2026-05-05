@@ -39,21 +39,18 @@ export default function AppLayout() {
           </Link>
 
           <div className="flex flex-wrap items-center gap-1 text-sm font-medium">
-            <HeaderLink to="/quote">Get Quote</HeaderLink>
-            <HeaderLink to="/designs">Designs</HeaderLink>
-
             {isAuthenticated ? (
               <>
-                <span className="px-2.5 py-1.5 text-slate-500">
-                  {user.name}
-                </span>
-
                 <HeaderLink to="/dashboard">Dashboard</HeaderLink>
-                <HeaderLink to="/requests">Requests</HeaderLink>
-                <HeaderLink to="/change-password">Change Password</HeaderLink>
+                <HeaderLink to="/quote">Get Quote</HeaderLink>
+                <HeaderLink to="/designs">Designs</HeaderLink>
                 <HeaderLink to="/design-requests">Design Requests</HeaderLink>
+                <HeaderLink to="/requests">Requests</HeaderLink>
+                <HeaderLink to="/printers">Printers</HeaderLink>
 
                 {isAdmin && <HeaderLink to="/admin">Admin</HeaderLink>}
+
+                <HeaderLink to="/account-settings">{user?.name}</HeaderLink>
 
                 <button
                   type="button"
@@ -65,6 +62,9 @@ export default function AppLayout() {
               </>
             ) : (
               <>
+                <HeaderLink to="/quote">Get Quote</HeaderLink>
+                <HeaderLink to="/designs">Designs</HeaderLink>
+                <HeaderLink to="/printers">Printers</HeaderLink>
                 <HeaderLink to="/login">Login</HeaderLink>
                 <HeaderLink to="/register">Register</HeaderLink>
               </>

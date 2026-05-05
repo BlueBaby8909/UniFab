@@ -21,18 +21,22 @@ This README is the working reference for the approved product workflow. The proj
 ### In Scope
 
 - Public quote calculation without login.
-- Authenticated print request submission.
+- Authenticated print request submission with Terms & Conditions acceptance.
 - Backend quote persistence through short-lived quote records/tokens.
 - Slicer-based quote calculation using PrusaSlicer-generated G-code.
-- Material and slicer profile management.
+- Basic pre-flight warnings (e.g., long print times or large volumes) based on slicer data.
+- Material and slicer profile management (including rich material specs).
 - Admin-managed pricing configuration.
-- Client request history and request status tracking.
-- Receipt upload after payment slip issuance.
-- Design library using local admin designs and MyMiniFactory results.
-- Admin readiness control for MyMiniFactory designs.
+- Client request history and visual request status tracking.
+- Automated payment slip generation and physical in-person receipt verification.
+- Design library using local admin designs, user-submitted designs (pending approval), and MyMiniFactory results.
+- "Print Ready" instant quoting for verified library designs.
+- Admin readiness control for MyMiniFactory designs via integrated API browser and direct file mapping.
 - Custom design requests with reference file uploads.
 - Local design categories/tags for filtering.
 - Printer information display.
+- Email verification for registered users.
+- Admin dashboard sorting and filtering.
 - Website/content management for homepage content, contact details, images, lab hours, and service notices.
 
 ### Out of Scope for the Current Version
@@ -45,6 +49,7 @@ This README is the working reference for the approved product workflow. The proj
 - Designer marketplace or designer portal.
 - Client-controlled printer selection affecting quotes.
 - Cart or batch checkout unless approved later as a separate enhancement.
+- Promo codes.
 
 ## User Roles
 
@@ -66,7 +71,7 @@ This README is the working reference for the approved product workflow. The proj
 8. Submitted print requests must keep quote snapshots to avoid unexpected changes after admin pricing updates.
 9. Admin-confirmed cost is authoritative after review.
 10. MyMiniFactory designs are not automatically ready for printing.
-11. Only admin-approved MyMiniFactory designs can proceed to direct print submission.
+11. Only admin-approved MyMiniFactory designs can proceed to direct print submission. Direct MMF quoting must use an admin-linked local printable file so PrusaSlicer remains the source of quote metrics.
 12. Local designs can support categories/tags, but tags are not required for the core request workflow.
 13. Printer information can be displayed to users, but printer/profile selection remains backend/admin-controlled.
 14. Website/content management is approved, but it is secondary to the core quote and request workflow.
@@ -83,8 +88,9 @@ This README is the working reference for the approved product workflow. The proj
 6. Backend runs PrusaSlicer CLI.
 7. Backend parses generated G-code for print time, filament weight, and filament length.
 8. Backend calculates the estimated price using current pricing configuration.
-9. Backend stores a temporary quote record and returns a quote token.
-10. User views the quote without needing to log in.
+9. Backend analyzes slicer data and displays basic pre-flight warnings (e.g., if print time > 24 hours or volume is near max).
+10. Backend stores a temporary quote record and returns a quote token.
+11. User views the quote in an interactive 3D viewer without needing to log in.
 
 ### 2. Submit Print Request
 
@@ -92,19 +98,19 @@ This README is the working reference for the approved product workflow. The proj
 2. User clicks submit.
 3. If unauthenticated, the user is redirected to login with the quote token preserved.
 4. After login, the frontend restores the quote from the backend.
-5. User confirms submission.
+5. User accepts Terms & Conditions and confirms submission.
 6. Backend validates the quote token.
 7. Backend creates a print request from the quote snapshot.
 8. Request starts as `pending_review`.
 
-### 3. Search Design Library
+### 3. Search Design Library & Submit Designs
 
 1. User opens the design library.
 2. User searches or filters designs.
-3. Backend returns local designs and MyMiniFactory results.
-4. Backend applies admin overrides and readiness rules.
-5. User views design details.
-6. User can proceed only when the design is local/active or MyMiniFactory-ready.
+3. User views design details.
+4. **Verified Designs:** If a design is tagged as "Print Ready," the user can click "Instant Quote" to bypass manual upload and proceed directly to quoting using the cached file.
+5. **Unverified MMF Designs:** If a MyMiniFactory design needs review, the user is provided an outbound link to download it directly from MyMiniFactory, after which they can manually upload it to the quote engine.
+6. **Community Submissions:** Authenticated users can upload their own designs to the library. These enter a `pending_approval` state until reviewed by an admin.
 
 ### 4. Request Custom Design
 
@@ -115,14 +121,14 @@ This README is the working reference for the approved product workflow. The proj
 5. Admin updates the design request status and notes.
 6. If the request produces a printable design, admin may convert it into a local design or support a linked print request.
 
-### 5. Track Requests and Upload Receipt
+### 5. Track Requests and Verify Payment
 
-1. Client opens request history.
+1. Client opens request history and uses the visual order status timeline.
 2. Client views request status, reference number, quote/confirmed cost, and status history.
-3. After admin issues a payment slip, client pays through the university process.
-4. Client uploads a receipt file.
-5. Request moves to `payment_submitted`.
-6. Admin verifies the receipt and advances the request.
+3. After admin approval, the system automatically generates a viewable/printable payment slip.
+4. Client pays in person at the designated university cashier.
+5. Client presents the physical receipt to lab staff during operational hours.
+6. Admin manually marks the request as `payment_verified` in the system.
 
 ## Main Admin Workflows
 
@@ -153,7 +159,9 @@ A quote cannot be calculated unless an active material and active slicer profile
 
 ### Print Request Management
 
-Admins review submitted requests, confirm feasibility, set confirmed cost, issue payment slips, verify receipts, and update request status.
+Admins review submitted requests, confirm feasibility, set confirmed cost, and issue payment slips (which the system auto-generates).
+
+When a client presents a physical receipt, admins verify it in-person and manually update the request status to `payment_verified`.
 
 Rejected print requests can be archived to remove them from the active admin queue. Archived rejected print requests may be permanently deleted afterward as an admin cleanup action.
 
@@ -168,9 +176,11 @@ Rejected design requests can be archived to remove them from the active admin qu
 Admins manage:
 
 - Local designs
-- Local design categories/tags
-- MyMiniFactory design overrides
-- MyMiniFactory readiness statuses
+- Local design categories and tags
+- User-submitted community designs (approving/rejecting with feedback notes)
+- MyMiniFactory design overrides via an integrated API browser.
+
+**MyMiniFactory Workflow:** Admins browse MMF designs directly within the admin panel. They view available files, test them locally, and use a "Set as Print Ready Target" feature to make the backend securely cache that specific file, preventing manual upload errors.
 
 Unavailable local designs can be archived to hide them from the default admin list. Archived unavailable local designs may be permanently deleted only when no print requests or design requests still reference them.
 
@@ -179,13 +189,17 @@ Recommended MyMiniFactory readiness statuses:
 | Status | Behavior |
 |---|---|
 | `not_reviewed` | Visible, but cannot be submitted directly for printing. |
-| `ready_for_printing` | Can proceed to quote/request flow. |
+| `ready_for_printing` | Can proceed to quote/request flow only when linked to an active local printable file. |
 | `not_printable` | Visible as unavailable or blocked from submission. |
 | `hidden` | Excluded from client-facing results. |
 
 ### Printer Information
 
-Admins may manage printer details shown to users. Printer selection does not affect client quote generation or request submission in the current scope.
+Admins manage the list of available printers (including technology, build volume, and supported materials). This information can be displayed publicly. Printer selection does not affect client quote generation or request submission in the current scope.
+
+### System Status
+
+The system provides a health check endpoint to monitor API and database latency/uptime, viewable on the frontend by admins only.
 
 ### Website and Content Management
 
@@ -247,6 +261,64 @@ Recommended quote snapshot fields:
 - Material cost snapshot
 - Slicer profile/version snapshot
 - Quote creation timestamp
+- Quote expiration timestamp
+
+## Setup
+
+### Backend
+
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+The backend runs on `http://localhost:5000` by default.
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend runs on the Vite development server, usually `http://localhost:5173`.
+
+## Environment Requirements
+
+The backend expects environment variables for:
+
+- Server port
+- CORS origin
+- MySQL connection
+- JWT secrets and expiration
+- Mail settings
+- MyMiniFactory API settings
+- PrusaSlicer executable path
+
+Do not commit real production secrets.
+
+## Verification
+
+Use these checks when changing the app:
+
+```bash
+cd frontend
+npm run lint
+npm run build
+```
+
+Backend currently has no test script defined. Verify backend changes manually through API behavior until automated tests are added.
+
+## Development Notes
+
+- Keep quote viewing and request submission separate.
+- Keep user-facing workflows simple and guided.
+- Keep admin workflows focused on operational tasks.
+- Prefer backend-controlled validation for anything related to pricing, slicing, profiles, uploads, and permissions.
+- Update this README and `AGENTS.md` when approved workflow decisions change.
+ timestamp
 - Quote expiration timestamp
 
 ## Setup

@@ -5,7 +5,8 @@ const adminLinks = [
   {
     to: "/admin/print-requests",
     title: "Print requests",
-    description: "Review submissions, update statuses, and issue payment slips.",
+    description:
+      "Review submissions, update statuses, and issue payment slips.",
   },
   {
     to: "/admin/design-requests",
@@ -43,9 +44,20 @@ const adminLinks = [
       "Manage machine, electricity, markup, and base rates for future quotes.",
   },
   {
+    to: "/admin/printers",
+    title: "Printers",
+    description:
+      "Publish printer information without letting clients choose quote profiles.",
+  },
+  {
     to: "/admin/maintenance",
     title: "Maintenance",
     description: "Run safe cleanup tasks for expired backend-managed records.",
+  },
+  {
+    to: "/admin/status",
+    title: "Status",
+    description: "Current API and database health for UniFab.",
   },
 ];
 
