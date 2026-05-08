@@ -196,9 +196,9 @@ export default function App() {
             <Route
               path="/requests/:requestId"
               element={
-                <AdminRoute>
+                <ProtectedRoute>
                   <PrintRequestDetail />
-                </AdminRoute>
+                </ProtectedRoute>
               }
             />
             <Route

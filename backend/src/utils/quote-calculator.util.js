@@ -72,6 +72,52 @@ function calculateQuoteEstimate({
   const singleUnitTotal = singleUnitSubtotal * markupFactor;
   const totalPrice = singleUnitTotal * quantity;
 
+  const warnings = [];
+
+  // Print time warnings
+  if (estimatedPrintTimeMinutes > 24 * 60) {
+    warnings.push(
+      "Print time exceeds 24 hours. This increases the risk of warping and failure. Consider breaking the model into smaller, connectable parts.",
+    );
+  } else if (estimatedPrintTimeMinutes > 12 * 60) {
+    warnings.push(
+      "This is a long print (over 12 hours). Expect a typical turnaround time of 2-5 business days.",
+    );
+  }
+
+  // Weight / material volume warnings
+  if (filamentWeightGrams > 500) {
+    warnings.push(
+      "This model uses a massive amount of material (>500g). To lower costs, consider reducing the infill percentage, scaling down, or hollowing out the model.",
+    );
+  }
+
+  // Small or thin models warning
+  if (filamentWeightGrams < 5 && estimatedPrintTimeMinutes < 30) {
+    warnings.push(
+      "This model is very small or thin. Ensure wall thicknesses meet the minimum requirements (typically 1.2mm for FDM) to prevent fragility.",
+    );
+  }
+
+  // Material-specific DFM (Design for Manufacturing) warnings
+  if (profile?.material) {
+    const mat = profile.material.toLowerCase();
+    
+    if (mat.includes("tpu") || mat.includes("flex")) {
+      warnings.push(
+        "TPU/Flexible material selected: Avoid designs with extreme overhangs. Flexible supports are difficult to remove cleanly.",
+      );
+    } else if (mat.includes("abs") || mat.includes("asa")) {
+      warnings.push(
+        "ABS/ASA material selected: Prone to warping on large flat surfaces. Ensure your design avoids sharp corners on the base if possible.",
+      );
+    } else if (mat.includes("petg")) {
+      warnings.push(
+         "PETG material selected: Excellent for structural parts, but fine stringing may occur on highly detailed models. Post-processing (sanding) may be required."
+      );
+    }
+  }
+
   return {
     quantity,
     currency: pricingConfig.currency,
@@ -79,6 +125,7 @@ function calculateQuoteEstimate({
     filamentWeightGrams: Number(filamentWeightGrams),
     filamentLengthMeters: Number(filamentLengthMeters),
     profile,
+    warnings,
     costBreakdown: {
       baseFee: roundMoney(baseFee),
       materialCost: roundMoney(materialCost),

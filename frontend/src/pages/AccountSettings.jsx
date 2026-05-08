@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 import { changeCurrentPassword, resendVerificationEmail } from "../api/auth";
 import { Button } from "../components/ui/Button";
@@ -10,6 +11,10 @@ export default function AccountSettings() {
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
@@ -89,33 +94,78 @@ export default function AccountSettings() {
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-5">
             <Field label="Current password">
-              <TextInput
-                type="password"
-                value={oldPassword}
-                onChange={(event) => setOldPassword(event.target.value)}
-                autoComplete="current-password"
-                required
-              />
+              <div className="relative">
+                <TextInput
+                  type={showOldPassword ? "text" : "password"}
+                  value={oldPassword}
+                  onChange={(event) => setOldPassword(event.target.value)}
+                  autoComplete="current-password"
+                  className="pr-11"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowOldPassword((current) => !current)}
+                  aria-label={showOldPassword ? "Hide password" : "Show password"}
+                  className="absolute inset-y-0 right-3 flex items-center text-slate-500 transition hover:text-slate-950"
+                >
+                  {showOldPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
             </Field>
 
             <Field label="New password">
-              <TextInput
-                type="password"
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                autoComplete="new-password"
-                required
-              />
+              <div className="relative">
+                <TextInput
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  autoComplete="new-password"
+                  className="pr-11"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword((current) => !current)}
+                  aria-label={showNewPassword ? "Hide password" : "Show password"}
+                  className="absolute inset-y-0 right-3 flex items-center text-slate-500 transition hover:text-slate-950"
+                >
+                  {showNewPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
             </Field>
 
             <Field label="Confirm new password">
-              <TextInput
-                type="password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                autoComplete="new-password"
-                required
-              />
+              <div className="relative">
+                <TextInput
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  autoComplete="new-password"
+                  className="pr-11"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((current) => !current)}
+                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                  className="absolute inset-y-0 right-3 flex items-center text-slate-500 transition hover:text-slate-950"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
             </Field>
 
             <div className="space-y-3">

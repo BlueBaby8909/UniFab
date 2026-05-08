@@ -10,6 +10,7 @@ import {
   uploadPrintRequestPaymentSlip,
   uploadPrintRequestReceipt,
   getPrintRequestReceipt,
+  undoPrintRequestStatus,
 } from "../controllers/print-request.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { verifyAdmin } from "../middlewares/role.middleware.js";
@@ -65,6 +66,16 @@ router
     updatePrintRequestStatusValidator(),
     validate,
     updatePrintRequestStatus,
+  );
+
+router
+  .route("/admin/:requestId/undo")
+  .post(
+    writeRateLimiter,
+    verifyAdmin,
+    printRequestIdValidator(),
+    validate,
+    undoPrintRequestStatus,
   );
 
 router

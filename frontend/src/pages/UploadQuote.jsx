@@ -6,6 +6,7 @@ import { Button } from "../components/ui/Button";
 import { Alert } from "../components/ui/Feedback";
 import { Field, SelectInput, TextInput } from "../components/ui/Form";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
+import { ModelViewer } from "../components/ui/ModelViewer";
 
 export default function UploadQuote() {
   const navigate = useNavigate();
@@ -110,6 +111,10 @@ export default function UploadQuote() {
               </p>
             )}
           </Field>
+
+          <div className="mt-2">
+            <ModelViewer file={modelFile} />
+          </div>
 
           <Field
             label="Material"

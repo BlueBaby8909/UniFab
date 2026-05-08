@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { registerUser } from "../api/auth";
 import { Button, ButtonLink } from "../components/ui/Button";
 import { Alert } from "../components/ui/Feedback";
@@ -14,6 +15,7 @@ export default function Register() {
     userType: "student",
   });
 
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -109,12 +111,29 @@ export default function Register() {
           </Field>
 
           <Field label="Password">
-            <TextInput
-              type="password"
-              value={form.password}
-              onChange={(event) => updateField("password", event.target.value)}
-              required
-            />
+            <div className="relative">
+              <TextInput
+                type={showPassword ? "text" : "password"}
+                value={form.password}
+                onChange={(event) =>
+                  updateField("password", event.target.value)
+                }
+                className="pr-11"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((current) => !current)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute inset-y-0 right-3 flex items-center text-slate-500 transition hover:text-slate-950"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
+            </div>
           </Field>
 
           <Alert type="error">{error}</Alert>

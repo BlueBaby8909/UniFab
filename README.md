@@ -161,7 +161,9 @@ A quote cannot be calculated unless an active material and active slicer profile
 
 Admins review submitted requests, confirm feasibility, set confirmed cost, and issue payment slips (which the system auto-generates).
 
-When a client presents a physical receipt, admins verify it in-person and manually update the request status to `payment_verified`.
+When a client presents a physical receipt, admins verify it in-person and manually update the request status to `payment_verified`. Admins can undo accidental status changes.
+
+Admin dashboards support sorting and filtering for efficient request management.
 
 Rejected print requests can be archived to remove them from the active admin queue. Archived rejected print requests may be permanently deleted afterward as an admin cleanup action.
 

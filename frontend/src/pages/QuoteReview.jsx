@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { getQuoteByToken } from "../api/quotes";
 import { submitPrintRequestFromQuote } from "../api/requests";
 import { Button } from "../components/ui/Button";
@@ -18,6 +18,7 @@ export default function QuoteReview() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const quoteSnapshot = quote?.quoteSnapshot;
 
@@ -156,6 +157,19 @@ export default function QuoteReview() {
               </div>
             )}
 
+            {quoteSnapshot?.warnings?.length > 0 && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-4">
+                <h3 className="font-semibold text-amber-800">
+                  Pre-flight Warnings
+                </h3>
+                <ul className="mt-2 list-inside list-disc text-sm text-amber-700 space-y-1">
+                  {quoteSnapshot.warnings.map((warning, index) => (
+                    <li key={index}>{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div className="rounded-md bg-slate-950 p-4 text-white shadow-sm">
               <p className="text-sm text-slate-300">Estimated cost</p>
               <p className="mt-1 text-3xl font-semibold tabular-nums">
@@ -172,18 +186,39 @@ export default function QuoteReview() {
         )}
 
         {quote && (
-          <div className="mt-6 flex items-center gap-3">
-            <Button
-              type="button"
-              onClick={handleSubmitRequest}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Submitting..." : "Submit print request"}
-            </Button>
+          <div className="mt-8 space-y-4 border-t border-slate-200 pt-6">
+            <div className="flex items-start gap-3">
+              <div className="flex h-6 items-center">
+                <input
+                  id="terms-checkbox"
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-950"
+                />
+              </div>
+              <label htmlFor="terms-checkbox" className="text-sm leading-6 text-slate-600">
+                I agree to the{" "}
+                <Link to="/terms" className="font-semibold text-slate-950 hover:underline">
+                  Terms and Conditions
+                </Link>
+                , acknowledging the lab's policies on print failures, material usage, and turnaround times.
+              </label>
+            </div>
 
-            <p className="text-sm text-slate-500">
-              Quote viewing is public. Submission requires login.
-            </p>
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                onClick={handleSubmitRequest}
+                disabled={isSubmitting || !agreedToTerms}
+              >
+                {isSubmitting ? "Submitting..." : "Submit print request"}
+              </Button>
+
+              <p className="text-sm text-slate-500">
+                Quote viewing is public. Submission requires login.
+              </p>
+            </div>
           </div>
         )}
 
@@ -205,7 +240,9 @@ function getQuoteSourceLabel(quote) {
   }
 
   if (quote.sourceType === "design_request") {
-    return quote.designSnapshot?.designRequest?.title || "Completed design request";
+    return (
+      quote.designSnapshot?.designRequest?.title || "Completed design request"
+    );
   }
 
   if (quote.sourceType === "mmf") {

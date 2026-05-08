@@ -46,6 +46,12 @@ export function updateAdminPrintRequestStatus(requestId, payload) {
   });
 }
 
+export function undoAdminPrintRequestStatus(requestId) {
+  return apiRequest(`/requests/admin/${requestId}/undo`, {
+    method: "POST",
+  });
+}
+
 export function uploadAdminPaymentSlip(requestId, formData) {
   return apiRequest(`/requests/admin/${requestId}/payment-slip`, {
     method: "POST",

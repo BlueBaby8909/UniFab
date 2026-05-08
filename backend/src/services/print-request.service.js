@@ -456,10 +456,10 @@ async function updateAdminPrintRequestStatus({ requestId, adminId, body }) {
       ? parsedConfirmedCost
       : existingPrintRequest.confirmed_cost;
 
-  if (nextStatus === PRINT_REQUEST_STATUSES.PAYMENT_SLIP_ISSUED) {
+  if (nextStatus === PRINT_REQUEST_STATUSES.PAYMENT_SLIP_ISSUED && nextConfirmedCost == null) {
     throw new ApiError(
       400,
-      "Use the payment slip upload endpoint to issue a payment slip",
+      "Confirmed cost must be provided when issuing a payment slip.",
     );
   }
 
@@ -509,6 +509,73 @@ async function updateAdminPrintRequestStatus({ requestId, adminId, body }) {
     return {
       printRequest: updatedPrintRequest,
       statusHistory,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+async function undoAdminPrintRequestStatus({ requestId, adminId }) {
+  const existingPrintRequest = await getPrintRequestById(requestId);
+
+  if (!existingPrintRequest) {
+    throw new ApiError(404, "Print request not found");
+  }
+
+  if (existingPrintRequest.archived_at) {
+    throw new ApiError(400, "Archived print requests cannot be updated");
+  }
+
+  const statusHistory = await getPrintRequestStatusHistoryByRequestId(requestId);
+
+  if (statusHistory.length < 2) {
+    throw new ApiError(400, "Cannot undo: No previous status found.");
+  }
+
+  // getPrintRequestStatusHistoryByRequestId returns history ordered by created_at ASC
+  // So the last entry is the current one, and the second to last is the one we want to revert to.
+  const currentEntry = statusHistory[statusHistory.length - 1];
+  const previousEntry = statusHistory[statusHistory.length - 2];
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const updatedPrintRequest = await updatePrintRequestStatusById(
+      requestId,
+      {
+        status: previousEntry.status,
+        rejectionReason: null,
+        confirmedCost: existingPrintRequest.confirmed_cost,
+        paymentSlipUrl: existingPrintRequest.payment_slip_url,
+      },
+      connection,
+    );
+
+    await createPrintRequestStatusHistory(
+      {
+        printRequestId: requestId,
+        status: previousEntry.status,
+        changedBy: adminId,
+        changedByRole: "admin",
+        note: `Status change undone: Reverted from ${currentEntry.status} to ${previousEntry.status}`,
+      },
+      connection,
+    );
+
+    await connection.commit();
+
+    const newStatusHistory = await getPrintRequestStatusHistoryByRequestId(
+      updatedPrintRequest.id,
+    );
+
+    return {
+      printRequest: updatedPrintRequest,
+      statusHistory: newStatusHistory,
     };
   } catch (error) {
     await connection.rollback();
@@ -732,4 +799,5 @@ export {
   uploadAdminPrintRequestPaymentSlip,
   uploadClientPrintRequestReceipt,
   getPrintRequestReceiptForUser,
+  undoAdminPrintRequestStatus,
 };

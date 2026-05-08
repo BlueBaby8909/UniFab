@@ -1,7 +1,4 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "../components/ui/Button";
-import { Alert } from "../components/ui/Feedback";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
 import { useAuth } from "../context/AuthContext";
 
@@ -30,28 +27,6 @@ const dashboardLinks = [
 
 export default function ClientDashboard() {
   const { user } = useAuth();
-  const [isSendingVerification, setIsSendingVerification] = useState(false);
-  const [verificationMessage, setVerificationMessage] = useState("");
-  const [verificationError, setVerificationError] = useState("");
-
-  async function handleResendVerification() {
-    setIsSendingVerification(true);
-    setVerificationMessage("");
-    setVerificationError("");
-
-    try {
-      const response = await resendVerificationEmail();
-      setVerificationMessage(
-        response.message || "Verification email sent successfully.",
-      );
-    } catch (err) {
-      setVerificationError(
-        err.message || "We could not send a verification email.",
-      );
-    } finally {
-      setIsSendingVerification(false);
-    }
-  }
 
   return (
     <PageShell size="lg">

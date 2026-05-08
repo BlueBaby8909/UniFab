@@ -6,17 +6,17 @@ import {
   getPrintRequestById,
   getPrintRequestReceiptUrl,
   updateAdminPrintRequestStatus,
-  uploadAdminPaymentSlip,
+  undoAdminPrintRequestStatus,
 } from "../../api/requests";
 
 const STATUS_TRANSITIONS = {
-  pending_review: ["design_in_progress", "approved", "rejected"],
+  pending_review: ["approved", "rejected"],
   design_in_progress: ["approved", "rejected"],
-  approved: ["rejected"],
-  payment_slip_issued: [],
+  approved: ["payment_slip_issued", "rejected"],
+  payment_slip_issued: ["payment_verified", "rejected"],
   payment_submitted: ["payment_verified", "rejected"],
-  payment_verified: ["printing"],
-  printing: ["completed"],
+  payment_verified: ["printing", "rejected"],
+  printing: ["completed", "rejected"],
   completed: [],
   rejected: [],
 };
@@ -49,12 +49,7 @@ export default function AdminPrintRequestDetail() {
     confirmedCost: "",
   });
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [paymentSlipFile, setPaymentSlipFile] = useState(null);
-  const [paymentSlipForm, setPaymentSlipForm] = useState({
-    confirmedCost: "",
-    note: "",
-  });
-  const [isUploadingPaymentSlip, setIsUploadingPaymentSlip] = useState(false);
+  const [isUndoingStatus, setIsUndoingStatus] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -62,7 +57,6 @@ export default function AdminPrintRequestDetail() {
   const quoteSnapshot = printRequest?.quoteSnapshot;
   const quoteMetrics = quoteSnapshot?.quote || quoteSnapshot;
 
-  const canIssuePaymentSlip = printRequest?.status === "approved";
   const canArchive =
     printRequest?.status === "rejected" && !printRequest?.archivedAt;
   const canDelete =
@@ -89,10 +83,6 @@ export default function AdminPrintRequestDetail() {
         setStatusForm((current) => ({
           ...current,
           status: "",
-          confirmedCost: loadedPrintRequest?.confirmedCost || "",
-        }));
-        setPaymentSlipForm((current) => ({
-          ...current,
           confirmedCost:
             loadedPrintRequest?.confirmedCost ||
             loadedPrintRequest?.estimatedCost ||
@@ -146,7 +136,7 @@ export default function AdminPrintRequestDetail() {
         status: "",
         note: "",
         rejectionReason: "",
-        confirmedCost: "",
+        confirmedCost: data.data?.printRequest?.confirmedCost || "",
       });
       setSuccessMessage("Print request status updated.");
     } catch (err) {
@@ -156,37 +146,36 @@ export default function AdminPrintRequestDetail() {
     }
   };
 
-  const handlePaymentSlipUpload = async (event) => {
-    event.preventDefault();
+  const handleUndoStatus = async () => {
+    if (statusHistory.length < 2) {
+      setError("Cannot undo: No previous status found.");
+      return;
+    }
 
-    if (!paymentSlipFile) {
-      setError("Please choose a payment slip file.");
+    const confirmed = window.confirm(
+      "Revert this request to its previous status? This will add a record to the history.",
+    );
+
+    if (!confirmed) {
       return;
     }
 
     try {
-      setIsUploadingPaymentSlip(true);
+      setIsUndoingStatus(true);
       setError("");
       setSuccessMessage("");
 
-      const formData = new FormData();
-      formData.append("paymentSlipFile", paymentSlipFile);
-      formData.append("confirmedCost", paymentSlipForm.confirmedCost);
-      formData.append("note", paymentSlipForm.note);
-
-      const data = await uploadAdminPaymentSlip(requestId, formData);
+      const data = await undoAdminPrintRequestStatus(requestId);
 
       setPrintRequest(
         data.data?.printRequest || data.printRequest || data.request || data,
       );
       setStatusHistory(data.data?.statusHistory || data.statusHistory || []);
-      setPaymentSlipFile(null);
-      setPaymentSlipForm({ confirmedCost: "", note: "" });
-      setSuccessMessage("Payment slip uploaded and issued.");
+      setSuccessMessage("Last status change undone.");
     } catch (err) {
       setError(err.message);
     } finally {
-      setIsUploadingPaymentSlip(false);
+      setIsUndoingStatus(false);
     }
   };
 
@@ -282,12 +271,7 @@ export default function AdminPrintRequestDetail() {
 
               <div>
                 <p className="text-sm font-medium text-slate-500">Client</p>
-                <p className="font-semibold text-slate-950">
-                  {printRequest.clientName ||
-                    printRequest.userName ||
-                    printRequest.user?.name ||
-                    "Client"}
-                </p>
+                <p className="font-semibold text-slate-950">{"Client"}</p>
               </div>
 
               <div>
@@ -372,10 +356,6 @@ export default function AdminPrintRequestDetail() {
               <h2 className="text-lg font-semibold">Files</h2>
 
               <div className="mt-3 space-y-2 text-sm text-slate-600">
-                <p>
-                  Payment slip:{" "}
-                  {printRequest.paymentSlipUrl ? "Uploaded" : "Not uploaded"}
-                </p>
                 <p>
                   Client receipt:{" "}
                   {printRequest.receiptUrl ? (
@@ -481,6 +461,28 @@ export default function AdminPrintRequestDetail() {
                       </div>
                     )}
 
+                    {statusForm.status === "payment_slip_issued" && (
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700">
+                          Confirmed cost (PHP)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={statusForm.confirmedCost}
+                          onChange={(event) =>
+                            setStatusForm((current) => ({
+                              ...current,
+                              confirmedCost: event.target.value,
+                            }))
+                          }
+                          className="mt-2 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                          required
+                        />
+                      </div>
+                    )}
+
                     <div>
                       <label className="block text-sm font-medium text-slate-700">
                         Note
@@ -498,85 +500,27 @@ export default function AdminPrintRequestDetail() {
                       />
                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={isUpdatingStatus}
-                      className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-                    >
-                      {isUpdatingStatus ? "Updating..." : "Update Status"}
-                    </button>
-                  </form>
-
-                  {canIssuePaymentSlip && (
-                    <form
-                      onSubmit={handlePaymentSlipUpload}
-                      className="space-y-4"
-                    >
-                      <h3 className="font-semibold text-slate-950">
-                        Issue Payment Slip
-                      </h3>
-
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700">
-                          Confirmed cost
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={paymentSlipForm.confirmedCost}
-                          onChange={(event) =>
-                            setPaymentSlipForm((current) => ({
-                              ...current,
-                              confirmedCost: event.target.value,
-                            }))
-                          }
-                          className="mt-2 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700">
-                          Payment slip file
-                        </label>
-                        <input
-                          type="file"
-                          accept=".jpg,.jpeg,.png,.pdf"
-                          onChange={(event) =>
-                            setPaymentSlipFile(event.target.files[0] || null)
-                          }
-                          className="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700">
-                          Note
-                        </label>
-                        <textarea
-                          value={paymentSlipForm.note}
-                          onChange={(event) =>
-                            setPaymentSlipForm((current) => ({
-                              ...current,
-                              note: event.target.value,
-                            }))
-                          }
-                          rows={3}
-                          className="mt-2 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                        />
-                      </div>
-
+                    <div className="flex gap-3">
                       <button
                         type="submit"
-                        disabled={isUploadingPaymentSlip}
+                        disabled={isUpdatingStatus || isUndoingStatus}
                         className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
                       >
-                        {isUploadingPaymentSlip
-                          ? "Uploading..."
-                          : "Upload Payment Slip"}
+                        {isUpdatingStatus ? "Updating..." : "Update Status"}
                       </button>
-                    </form>
-                  )}
+
+                      {statusHistory.length >= 2 && (
+                        <button
+                          type="button"
+                          onClick={handleUndoStatus}
+                          disabled={isUndoingStatus || isUpdatingStatus}
+                          className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isUndoingStatus ? "Undoing..." : "Undo Last Status"}
+                        </button>
+                      )}
+                    </div>
+                  </form>
                 </div>
               )}
             </section>

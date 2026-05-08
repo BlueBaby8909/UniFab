@@ -11,6 +11,7 @@ import {
   uploadAdminPrintRequestPaymentSlip,
   uploadClientPrintRequestReceipt,
   getPrintRequestReceiptForUser,
+  undoAdminPrintRequestStatus,
 } from "../services/print-request.service.js";
 
 function parseJsonSafely(value) {
@@ -192,6 +193,24 @@ const updatePrintRequestStatus = asyncHandler(async (req, res) => {
   );
 });
 
+const undoPrintRequestStatus = asyncHandler(async (req, res) => {
+  const result = await undoAdminPrintRequestStatus({
+    requestId: req.params.requestId,
+    adminId: req.user.id,
+  });
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        printRequest: normalizePrintRequest(result.printRequest),
+        statusHistory: result.statusHistory.map(normalizeStatusHistory),
+      },
+      "Last status change undone successfully",
+    ),
+  );
+});
+
 const archivePrintRequest = asyncHandler(async (req, res) => {
   const result = await archiveAdminPrintRequest({
     requestId: req.params.requestId,
@@ -280,6 +299,7 @@ export {
   getMyPrintRequestDetail,
   listAllPrintRequests,
   updatePrintRequestStatus,
+  undoPrintRequestStatus,
   archivePrintRequest,
   deletePrintRequest,
   uploadPrintRequestPaymentSlip,
