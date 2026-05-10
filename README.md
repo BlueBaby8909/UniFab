@@ -358,10 +358,6 @@ The backend expects environment variables for:
 - Mail settings
 - MyMiniFactory API settings
 - PrusaSlicer executable path
-- Design Library AI moderation:
-  - `DESIGN_AI_MODERATION_ENABLED=false`
-  - `OPENAI_API_KEY=`
-  - `OPENAI_MODERATION_MODEL=omni-moderation-latest`
 
 Do not commit real production secrets.
 

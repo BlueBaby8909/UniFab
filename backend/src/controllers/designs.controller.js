@@ -44,7 +44,6 @@ import {
 } from "../middlewares/local-design-upload.middleware.js";
 import { removeManagedLocalDesignFile } from "../utils/local-design-storage.util.js";
 import { runDesignRulesModeration } from "../services/design-moderation.service.js";
-import { runDesignAiModeration } from "../services/design-ai-moderation.service.js";
 
 const DESIGN_MODERATION_STATUSES = new Set([
   "draft",
@@ -1137,39 +1136,7 @@ const publishMyDesign = asyncHandler(async (req, res) => {
     );
   }
 
-  const rulesModeration = runDesignRulesModeration(existingLocalDesign);
-  let aiModeration = null;
-
-  if (rulesModeration.status !== "auto_rejected") {
-    aiModeration = await runDesignAiModeration(existingLocalDesign);
-  }
-
-  const finalStatus =
-    rulesModeration.status === "auto_rejected" ||
-    aiModeration?.status === "auto_rejected"
-      ? "auto_rejected"
-      : "needs_admin_review";
-
-  const combinedFlags = [
-    ...(rulesModeration.flags || []),
-    ...(aiModeration?.flags || []),
-  ];
-
-  const combinedSummary = [
-    rulesModeration.summary,
-    aiModeration?.summary,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  const combinedFeedback =
-    finalStatus === "auto_rejected"
-      ? rulesModeration.status === "auto_rejected"
-        ? rulesModeration.feedback
-        : aiModeration?.feedback
-      : "Your design has been submitted for FabLab review before it appears publicly.";
-
-  const decisionSource = aiModeration ? "ai" : "rules";
+  const moderation = runDesignRulesModeration(existingLocalDesign);
   const previousStatus = existingLocalDesign.moderation_status;
 
   const connection = await pool.getConnection();
@@ -1180,15 +1147,16 @@ const publishMyDesign = asyncHandler(async (req, res) => {
     const updatedDesign = await updateLocalDesignModerationState(
       designId,
       {
-        moderationStatus: finalStatus,
-        isActive: false,
+        moderationStatus: moderation.status,
+        isActive: moderation.isActive,
         isPrintReady: false,
-        moderationFlags: combinedFlags,
-        moderationSummary: combinedSummary,
-        moderationFeedback: combinedFeedback,
-        moderationDecisionSource: decisionSource,
+        moderationFlags: moderation.flags,
+        moderationSummary: moderation.summary,
+        moderationFeedback: moderation.feedback,
+        moderationDecisionSource: "rules",
         publishedAt: new Date(),
-        reviewedAt: finalStatus === "needs_admin_review" ? null : new Date(),
+        reviewedAt:
+          moderation.status === "needs_admin_review" ? null : new Date(),
       },
       connection,
     );
@@ -1200,13 +1168,11 @@ const publishMyDesign = asyncHandler(async (req, res) => {
         actorType: "user",
         eventType: "published_for_screening",
         fromStatus: previousStatus,
-        toStatus: finalStatus,
-        summary: combinedSummary,
+        toStatus: moderation.status,
+        summary: moderation.summary,
         metadata: {
-          decisionSource,
-          rules: rulesModeration,
-          ai: aiModeration,
-          flags: combinedFlags,
+          decisionSource: "rules",
+          flags: moderation.flags,
         },
       },
       connection,
