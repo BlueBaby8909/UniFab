@@ -305,6 +305,7 @@ export default function LocalDesignDetail() {
             )}
 
             <form
+              id="quote"
               onSubmit={handleQuote}
               className="rounded-lg border border-slate-200 bg-white p-5 shadow-none sm:p-6"
             >

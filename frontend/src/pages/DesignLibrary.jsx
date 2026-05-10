@@ -1,13 +1,32 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "../api/client";
 import { getDesignTaxonomy, searchDesignLibrary } from "../api/designs";
-import { Button } from "../components/ui/Button";
+import { Button, ButtonLink } from "../components/ui/Button";
 import { Alert, EmptyState, StatusBadge } from "../components/ui/Feedback";
 import { SelectInput, TextInput } from "../components/ui/Form";
 import { PageHeader, PageShell, Panel } from "../components/ui/Page";
 
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
+
+const DEFAULT_LOCAL_PAGINATION = {
+  page: 1,
+  limit: 12,
+  totalCount: 0,
+  totalPages: 1,
+};
+
+const LOCAL_SORT_VALUES = new Set([
+  "newest",
+  "oldest",
+  "title_asc",
+  "title_desc",
+  "print_ready",
+]);
+
+const LOCAL_LIMIT_VALUES = new Set([6, 12, 24]);
+const SOURCE_FILTER_VALUES = new Set(["lab", "community"]);
+const PRINT_READY_FILTER_VALUES = new Set(["true", "false"]);
 
 function assetUrl(path) {
   if (!path) return "";
@@ -17,6 +36,45 @@ function assetUrl(path) {
   }
 
   return `${API_ORIGIN}${path}`;
+}
+
+function getSearchValue(searchParams, key, fallback = "") {
+  return searchParams.get(key) || fallback;
+}
+
+function getAllowedSearchValue(
+  searchParams,
+  key,
+  allowedValues,
+  fallback = "",
+) {
+  const value = searchParams.get(key);
+
+  if (!value || !allowedValues.has(value)) {
+    return fallback;
+  }
+
+  return value;
+}
+
+function getPositiveIntegerSearchValue(searchParams, key, fallback) {
+  const value = Number(searchParams.get(key));
+
+  if (!Number.isInteger(value) || value < 1) {
+    return fallback;
+  }
+
+  return value;
+}
+
+function getLocalLimitSearchValue(searchParams) {
+  const value = Number(searchParams.get("localLimit"));
+
+  if (!LOCAL_LIMIT_VALUES.has(value)) {
+    return 12;
+  }
+
+  return value;
 }
 
 function getMmfThumbnailUrl(item) {
@@ -34,19 +92,77 @@ function getMmfThumbnailUrl(item) {
   );
 }
 
+function parseLocalDesignPayload(localPayload, fallbackLimit) {
+  if (Array.isArray(localPayload)) {
+    return {
+      items: localPayload,
+      pagination: {
+        page: 1,
+        limit: fallbackLimit,
+        totalCount: localPayload.length,
+        totalPages: 1,
+      },
+    };
+  }
+
+  const items = localPayload?.items || [];
+  const page = Number(localPayload?.page || 1);
+  const limit = Number(localPayload?.limit || fallbackLimit);
+  const totalCount = Number(localPayload?.totalCount || items.length);
+  const totalPages = Number(localPayload?.totalPages || 1);
+
+  return {
+    items,
+    pagination: {
+      page: Math.max(page, 1),
+      limit: Math.max(limit, 1),
+      totalCount: Math.max(totalCount, 0),
+      totalPages: Math.max(totalPages, 1),
+    },
+  };
+}
+
 export default function DesignLibrary() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [tagFilter, setTagFilter] = useState("");
-  const [submittedSearch, setSubmittedSearch] = useState("");
-  const [submittedCategory, setSubmittedCategory] = useState("");
-  const [submittedTag, setSubmittedTag] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const submittedSearch = getSearchValue(searchParams, "q");
+  const categoryFilter = getSearchValue(searchParams, "category");
+  const tagFilter = getSearchValue(searchParams, "tag");
+  const sourceFilter = getAllowedSearchValue(
+    searchParams,
+    "sourceKind",
+    SOURCE_FILTER_VALUES,
+  );
+  const printReadyFilter = getAllowedSearchValue(
+    searchParams,
+    "printReady",
+    PRINT_READY_FILTER_VALUES,
+  );
+  const localSort = getAllowedSearchValue(
+    searchParams,
+    "localSort",
+    LOCAL_SORT_VALUES,
+    "newest",
+  );
+  const localPage = getPositiveIntegerSearchValue(searchParams, "localPage", 1);
+  const localLimit = getLocalLimitSearchValue(searchParams);
+
+  const [searchTerm, setSearchTerm] = useState(submittedSearch);
+  const [localPagination, setLocalPagination] = useState(
+    DEFAULT_LOCAL_PAGINATION,
+  );
+
   const [localDesigns, setLocalDesigns] = useState([]);
   const [mmfItems, setMmfItems] = useState([]);
   const [mmfStatus, setMmfStatus] = useState(null);
   const [taxonomy, setTaxonomy] = useState({ categories: [], tags: [] });
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setSearchTerm(submittedSearch);
+  }, [submittedSearch]);
 
   useEffect(() => {
     async function loadTaxonomy() {
@@ -72,24 +188,42 @@ export default function DesignLibrary() {
         setIsLoading(true);
         setError("");
 
-        const params = {};
+        const params = {
+          localPage,
+          localLimit,
+          localSort,
+        };
 
         if (submittedSearch) {
           params.q = submittedSearch;
         }
 
-        if (submittedCategory) {
-          params.category = submittedCategory;
+        if (categoryFilter) {
+          params.category = categoryFilter;
         }
 
-        if (submittedTag) {
-          params.tag = submittedTag;
+        if (tagFilter) {
+          params.tag = tagFilter;
+        }
+
+        if (sourceFilter) {
+          params.sourceKind = sourceFilter;
+        }
+
+        if (printReadyFilter) {
+          params.printReady = printReadyFilter;
         }
 
         const data = await searchDesignLibrary(params);
         const payload = data.data || data;
 
-        setLocalDesigns(payload.localDesigns || []);
+        const { items, pagination } = parseLocalDesignPayload(
+          payload.localDesigns || [],
+          localLimit,
+        );
+
+        setLocalDesigns(items);
+        setLocalPagination(pagination);
         setMmfItems(payload.mmfResults?.items || []);
         setMmfStatus(payload.mmfStatus || null);
       } catch (err) {
@@ -97,25 +231,104 @@ export default function DesignLibrary() {
         setLocalDesigns([]);
         setMmfItems([]);
         setMmfStatus(null);
+        setLocalPagination(DEFAULT_LOCAL_PAGINATION);
       } finally {
         setIsLoading(false);
       }
     }
 
     loadDesigns();
-  }, [submittedSearch, submittedCategory, submittedTag]);
+  }, [
+    submittedSearch,
+    categoryFilter,
+    tagFilter,
+    sourceFilter,
+    printReadyFilter,
+    localSort,
+    localPage,
+    localLimit,
+  ]);
+
+  const updateUrlFilters = (overrides = {}) => {
+    const nextValues = {
+      q: submittedSearch,
+      category: categoryFilter,
+      tag: tagFilter,
+      sourceKind: sourceFilter,
+      printReady: printReadyFilter,
+      localSort,
+      localPage,
+      localLimit,
+      ...overrides,
+    };
+
+    const nextParams = new URLSearchParams();
+
+    if (nextValues.q) {
+      nextParams.set("q", nextValues.q);
+    }
+
+    if (nextValues.category) {
+      nextParams.set("category", nextValues.category);
+    }
+
+    if (nextValues.tag) {
+      nextParams.set("tag", nextValues.tag);
+    }
+
+    if (nextValues.sourceKind) {
+      nextParams.set("sourceKind", nextValues.sourceKind);
+    }
+
+    if (nextValues.printReady) {
+      nextParams.set("printReady", nextValues.printReady);
+    }
+
+    if (nextValues.localSort && nextValues.localSort !== "newest") {
+      nextParams.set("localSort", nextValues.localSort);
+    }
+
+    if (Number(nextValues.localPage) > 1) {
+      nextParams.set("localPage", String(nextValues.localPage));
+    }
+
+    if (Number(nextValues.localLimit) !== 12) {
+      nextParams.set("localLimit", String(nextValues.localLimit));
+    }
+
+    setSearchParams(nextParams);
+  };
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    setSubmittedSearch(searchTerm.trim());
-    setSubmittedCategory(categoryFilter);
-    setSubmittedTag(tagFilter);
+
+    updateUrlFilters({
+      q: searchTerm.trim(),
+      localPage: 1,
+    });
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setSearchParams(new URLSearchParams());
+  };
+
+  const goToPreviousPage = () => {
+    updateUrlFilters({
+      localPage: Math.max(localPagination.page - 1, 1),
+    });
+  };
+
+  const goToNextPage = () => {
+    updateUrlFilters({
+      localPage: Math.min(localPagination.page + 1, localPagination.totalPages),
+    });
   };
 
   return (
     <PageShell size="xl">
       <Panel>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <PageHeader
             title="Design library"
             description="Browse approved local designs and search MyMiniFactory references."
@@ -132,7 +345,12 @@ export default function DesignLibrary() {
 
             <SelectInput
               value={categoryFilter}
-              onChange={(event) => setCategoryFilter(event.target.value)}
+              onChange={(event) =>
+                updateUrlFilters({
+                  category: event.target.value,
+                  localPage: 1,
+                })
+              }
               className="w-44"
             >
               <option value="">All categories</option>
@@ -145,7 +363,12 @@ export default function DesignLibrary() {
 
             <SelectInput
               value={tagFilter}
-              onChange={(event) => setTagFilter(event.target.value)}
+              onChange={(event) =>
+                updateUrlFilters({
+                  tag: event.target.value,
+                  localPage: 1,
+                })
+              }
               className="w-40"
             >
               <option value="">All tags</option>
@@ -156,7 +379,77 @@ export default function DesignLibrary() {
               ))}
             </SelectInput>
 
+            <SelectInput
+              value={sourceFilter}
+              onChange={(event) =>
+                updateUrlFilters({
+                  sourceKind: event.target.value,
+                  localPage: 1,
+                })
+              }
+              className="w-40"
+            >
+              <option value="">All sources</option>
+              <option value="lab">Lab designs</option>
+              <option value="community">Community designs</option>
+            </SelectInput>
+
+            <SelectInput
+              value={printReadyFilter}
+              onChange={(event) =>
+                updateUrlFilters({
+                  printReady: event.target.value,
+                  localPage: 1,
+                })
+              }
+              className="w-44"
+            >
+              <option value="">All availability</option>
+              <option value="true">Print Ready</option>
+              <option value="false">Review Only</option>
+            </SelectInput>
+
+            <SelectInput
+              value={localSort}
+              onChange={(event) =>
+                updateUrlFilters({
+                  localSort: event.target.value,
+                  localPage: 1,
+                })
+              }
+              className="w-44"
+            >
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="title_asc">Title A-Z</option>
+              <option value="title_desc">Title Z-A</option>
+              <option value="print_ready">Print Ready first</option>
+            </SelectInput>
+
+            <SelectInput
+              value={localLimit}
+              onChange={(event) =>
+                updateUrlFilters({
+                  localLimit: Number(event.target.value),
+                  localPage: 1,
+                })
+              }
+              className="w-32"
+            >
+              <option value={6}>6 / page</option>
+              <option value={12}>12 / page</option>
+              <option value={24}>24 / page</option>
+            </SelectInput>
+
             <Button type="submit">Search</Button>
+
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleClearFilters}
+            >
+              Clear
+            </Button>
           </form>
         </div>
 
@@ -169,29 +462,81 @@ export default function DesignLibrary() {
         {!isLoading && !error && (
           <div className="mt-8 space-y-10">
             <section>
-              <h2 className="text-xl font-semibold">Local Designs</h2>
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-950">
+                    Local Designs
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {localPagination.totalCount} result
+                    {localPagination.totalCount === 1 ? "" : "s"} found
+                  </p>
+                </div>
+
+                <p className="text-sm text-slate-500">
+                  Page {localPagination.page} of {localPagination.totalPages}
+                </p>
+              </div>
 
               {localDesigns.length === 0 ? (
                 <EmptyState
                   className="mt-4"
                   title="No local designs available."
-                  description="Approved lab or community designs will appear here."
+                  description="Try changing your search, filters, or sorting options."
                 />
               ) : (
-                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {localDesigns.map((design) => (
-                    <LocalDesignCard key={design.id} design={design} />
-                  ))}
-                </div>
+                <>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {localDesigns.map((design) => (
+                      <LocalDesignCard key={design.id} design={design} />
+                    ))}
+                  </div>
+
+                  {localPagination.totalPages > 1 && (
+                    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm text-slate-500">
+                        Showing page {localPagination.page} of{" "}
+                        {localPagination.totalPages}
+                      </p>
+
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={localPagination.page <= 1}
+                          onClick={goToPreviousPage}
+                        >
+                          Previous
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={
+                            localPagination.page >= localPagination.totalPages
+                          }
+                          onClick={goToNextPage}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </section>
 
             {submittedSearch && (
               <section>
-                <div className="flex items-center justify-between gap-4">
-                  <h2 className="text-xl font-semibold">
-                    MyMiniFactory Results
-                  </h2>
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-950">
+                      MyMiniFactory Results
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      External references are shown only for active searches.
+                    </p>
+                  </div>
 
                   {mmfStatus && !mmfStatus.available && (
                     <p className="text-sm font-medium text-red-600">
@@ -224,65 +569,80 @@ export default function DesignLibrary() {
 
 function LocalDesignCard({ design }) {
   const isPrintReady = Boolean(design.isPrintReady);
+  const detailPath = `/designs/local/${design.id}`;
+  const quotePath = `${detailPath}#quote`;
 
   return (
-    <Link
-      to={`/designs/local/${design.id}`}
-      className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
-    >
-      <div className="h-44 overflow-hidden bg-slate-100">
-        {design.thumbnailUrl ? (
-          <img
-            src={assetUrl(design.thumbnailUrl)}
-            alt={design.title || "Design thumbnail"}
-            className="h-full w-full object-cover transition duration-200 group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-sm text-slate-500">
-            No thumbnail
-          </div>
-        )}
-      </div>
+    <article className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
+      <Link to={detailPath} className="block">
+        <div className="h-44 overflow-hidden bg-slate-100">
+          {design.thumbnailUrl ? (
+            <img
+              src={assetUrl(design.thumbnailUrl)}
+              alt={design.title || "Design thumbnail"}
+              className="h-full w-full object-cover transition duration-200 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-slate-500">
+              No thumbnail
+            </div>
+          )}
+        </div>
 
-      <div className="p-4">
-        <h3 className="line-clamp-2 font-semibold text-slate-950">
-          {design.title || "Untitled design"}
-        </h3>
+        <div className="p-4 pb-0">
+          <h3 className="line-clamp-2 font-semibold text-slate-950">
+            {design.title || "Untitled design"}
+          </h3>
 
-        {design.description ? (
-          <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">
-            {design.description}
-          </p>
-        ) : (
-          <p className="mt-2 text-sm text-slate-500">
-            No description provided.
-          </p>
-        )}
+          {design.description ? (
+            <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">
+              {design.description}
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-slate-500">
+              No description provided.
+            </p>
+          )}
+        </div>
+      </Link>
 
-        {isPrintReady && (
-          <div className="mt-4 flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 p-4">
+        {isPrintReady ? (
+          <>
             <StatusBadge tone="success">Print Ready</StatusBadge>
-            <span className="text-sm font-semibold text-slate-950">
+            <ButtonLink to={quotePath} size="sm">
               Instant Quote
-            </span>
-          </div>
+            </ButtonLink>
+          </>
+        ) : (
+          <>
+            <StatusBadge tone="warning">Review Only</StatusBadge>
+            <ButtonLink to={detailPath} size="sm" variant="secondary">
+              View Details
+            </ButtonLink>
+          </>
         )}
       </div>
-    </Link>
+    </article>
   );
 }
 
 function MmfDesignCard({ item }) {
   const isPrintReady = Boolean(item.override?.isPrintReady);
+  const isPinned = Boolean(item.override?.isPinned);
   const thumbnailUrl = getMmfThumbnailUrl(item);
   const title = item.name || item.title || `Object ${item.id}`;
 
   return (
     <Link
       to={`/designs/mmf/${item.id}`}
-      className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+      className={`group overflow-hidden rounded-xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+        isPinned
+          ? "border-amber-300 ring-2 ring-amber-100 hover:border-amber-400"
+          : "border-slate-200 hover:border-slate-300"
+      }`}
     >
-      <div className="h-44 overflow-hidden bg-slate-100">
+      <div className="relative h-44 overflow-hidden bg-slate-100">
         {thumbnailUrl ? (
           <img
             src={thumbnailUrl}
@@ -292,6 +652,12 @@ function MmfDesignCard({ item }) {
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-slate-500">
             No thumbnail
+          </div>
+        )}
+
+        {isPinned && (
+          <div className="absolute left-3 top-3">
+            <StatusBadge tone="warning">Pinned</StatusBadge>
           </div>
         )}
       </div>
@@ -322,14 +688,14 @@ function MmfDesignCard({ item }) {
         )}
 
         {item.override?.clientNote && (
-          <p className="mt-3 text-sm text-slate-500">
+          <p className="mt-3 rounded-md bg-slate-50 px-3 py-2 text-sm leading-6 text-slate-600">
             {item.override.clientNote}
           </p>
         )}
 
         <div className="mt-4 flex items-center justify-between gap-3">
           <span className="text-sm font-semibold text-slate-950">
-            {isPrintReady ? "Instant Quote" : "Review details"}
+            View Details
           </span>
         </div>
       </div>

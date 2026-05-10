@@ -6,6 +6,13 @@ import {
 
 const ALLOWED_SORT_VALUES = ["visits", "date", "popularity"];
 const ALLOWED_ORDER_VALUES = ["asc", "desc"];
+const ALLOWED_LOCAL_SORT_VALUES = [
+  "newest",
+  "oldest",
+  "title_asc",
+  "title_desc",
+  "print_ready",
+];
 
 function hasText(value) {
   return value !== undefined && value !== null && String(value).trim() !== "";
@@ -81,6 +88,33 @@ const searchDesignLibraryValidator = () => {
       .trim()
       .isLength({ min: 1, max: 120 })
       .withMessage("Tag filter must be between 1 and 120 characters"),
+
+    query("localPage")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Local page must be a positive integer"),
+
+    query("localLimit")
+      .optional()
+      .isInt({ min: 1, max: 48 })
+      .withMessage("Local limit must be between 1 and 48"),
+
+    query("localSort")
+      .optional()
+      .isIn(ALLOWED_LOCAL_SORT_VALUES)
+      .withMessage(
+        "Local sort must be one of: newest, oldest, title_asc, title_desc, print_ready",
+      ),
+
+    query("sourceKind")
+      .optional()
+      .isIn(["lab", "community"])
+      .withMessage("sourceKind must be either lab or community"),
+
+    query("printReady")
+      .optional()
+      .isIn(["true", "false", "1", "0"])
+      .withMessage("printReady must be true or false"),
   ];
 };
 

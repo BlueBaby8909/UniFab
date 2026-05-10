@@ -755,6 +755,128 @@ async function getLocalDesignAuditEvents(localDesignId, connection = null) {
   return rows;
 }
 
+async function searchActiveLocalDesigns({
+  searchQuery = null,
+  category = null,
+  tag = null,
+  sourceKind = null,
+  printReady = null,
+  sort = "newest",
+  page = 1,
+  limit = 12,
+} = {}) {
+  const params = [];
+  const where = [
+    "ld.is_active = TRUE",
+    "ld.archived_at IS NULL",
+    "ld.moderation_status IN ('auto_approved', 'admin_approved')",
+  ];
+
+  if (searchQuery) {
+    where.push(`(
+      ld.title LIKE ?
+      OR ld.description LIKE ?
+      OR ld.material LIKE ?
+      OR ld.dimensions LIKE ?
+      OR ld.license_type LIKE ?
+      OR dc.name LIKE ?
+      OR EXISTS (
+        SELECT 1
+        FROM local_design_tags ldt
+        INNER JOIN design_tags dt ON dt.id = ldt.tag_id
+        WHERE ldt.local_design_id = ld.id
+          AND dt.is_active = TRUE
+          AND dt.name LIKE ?
+      )
+    )`);
+
+    const likeQuery = `%${searchQuery}%`;
+    params.push(
+      likeQuery,
+      likeQuery,
+      likeQuery,
+      likeQuery,
+      likeQuery,
+      likeQuery,
+      likeQuery,
+    );
+  }
+
+  if (category) {
+    where.push("(dc.slug = ? OR dc.name = ?)");
+    params.push(category, category);
+  }
+
+  if (tag) {
+    where.push(`EXISTS (
+      SELECT 1
+      FROM local_design_tags ldt
+      INNER JOIN design_tags dt ON dt.id = ldt.tag_id
+      WHERE ldt.local_design_id = ld.id
+        AND dt.is_active = TRUE
+        AND (dt.slug = ? OR dt.name = ?)
+    )`);
+    params.push(tag, tag);
+  }
+
+  if (sourceKind) {
+    where.push("ld.source_kind = ?");
+    params.push(sourceKind);
+  }
+
+  if (printReady !== null) {
+    where.push("ld.is_print_ready = ?");
+    params.push(Boolean(printReady));
+  }
+
+  const orderByMap = {
+    newest: "ld.created_at DESC, ld.id DESC",
+    oldest: "ld.created_at ASC, ld.id ASC",
+    title_asc: "ld.title ASC, ld.id DESC",
+    title_desc: "ld.title DESC, ld.id DESC",
+    print_ready: "ld.is_print_ready DESC, ld.created_at DESC, ld.id DESC",
+  };
+
+  const orderBy = orderByMap[sort] || orderByMap.newest;
+  const normalizedPage = Math.max(Number(page) || 1, 1);
+  const normalizedLimit = Math.min(Math.max(Number(limit) || 12, 1), 48);
+  const offset = (normalizedPage - 1) * normalizedLimit;
+
+  const countSql = `
+    SELECT COUNT(DISTINCT ld.id) AS total_count
+    FROM local_designs ld
+    LEFT JOIN design_categories dc ON dc.id = ld.category_id
+    WHERE ${where.join(" AND ")}
+  `;
+
+  const [countRows] = await pool.query(countSql, params);
+  const totalCount = Number(countRows[0]?.total_count || 0);
+
+  const sql = `
+    SELECT
+      ${LOCAL_DESIGN_SELECT}
+    FROM local_designs ld
+    LEFT JOIN design_categories dc ON dc.id = ld.category_id
+    WHERE ${where.join(" AND ")}
+    ORDER BY ${orderBy}
+    LIMIT ? OFFSET ?
+  `;
+
+  const rows = await getLocalDesignRows(sql, [
+    ...params,
+    normalizedLimit,
+    offset,
+  ]);
+
+  return {
+    items: rows,
+    page: normalizedPage,
+    limit: normalizedLimit,
+    totalCount,
+    totalPages: Math.max(Math.ceil(totalCount / normalizedLimit), 1),
+  };
+}
+
 export {
   getActiveLocalDesigns,
   getAllLocalDesignsForAdmin,
@@ -777,4 +899,5 @@ export {
   upsertDesignTagByName,
   replaceLocalDesignTags,
   updateCommunityDesignById,
+  searchActiveLocalDesigns,
 };

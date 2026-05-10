@@ -28,6 +28,7 @@ import {
   createLocalDesignAuditEvent,
   updateLocalDesignModerationState,
   updateCommunityDesignById,
+  searchActiveLocalDesigns,
 } from "../models/local-design.model.js";
 import {
   getAllDesignOverrides,
@@ -190,6 +191,14 @@ function normalizeOptionalText(value) {
   return String(value).trim();
 }
 
+function parsePrintReadyFilter(value) {
+  if (!hasText(value)) {
+    return null;
+  }
+
+  return ["true", "1"].includes(String(value).trim().toLowerCase());
+}
+
 function buildOverrideMap(overrides) {
   const map = new Map();
 
@@ -242,54 +251,6 @@ function parseOptionalBoolean(value, fieldName) {
   }
 
   throw new ApiError(400, `${fieldName} must be a valid boolean value`);
-}
-
-function matchesLocalDesignSearch(localDesign, searchQuery) {
-  if (!hasText(searchQuery)) {
-    return true;
-  }
-
-  const normalizedQuery = String(searchQuery).trim().toLowerCase();
-
-  return [
-    localDesign.title,
-    localDesign.description,
-    localDesign.material,
-    localDesign.dimensions,
-    localDesign.license_type,
-    localDesign.category_name,
-    ...(Array.isArray(localDesign.tags)
-      ? localDesign.tags.map((tag) => tag.name)
-      : []),
-  ]
-    .filter(Boolean)
-    .some((value) => String(value).toLowerCase().includes(normalizedQuery));
-}
-
-function matchesLocalDesignCategory(localDesign, categoryFilter) {
-  if (!hasText(categoryFilter)) {
-    return true;
-  }
-
-  const normalizedCategory = String(categoryFilter).trim().toLowerCase();
-
-  return [localDesign.category_slug, localDesign.category_name]
-    .filter(Boolean)
-    .some((value) => String(value).toLowerCase() === normalizedCategory);
-}
-
-function matchesLocalDesignTag(localDesign, tagFilter) {
-  if (!hasText(tagFilter)) {
-    return true;
-  }
-
-  const normalizedTag = String(tagFilter).trim().toLowerCase();
-
-  return (localDesign.tags || []).some((tag) =>
-    [tag.slug, tag.name]
-      .filter(Boolean)
-      .some((value) => String(value).toLowerCase() === normalizedTag),
-  );
 }
 
 function parseIdList(value) {
@@ -594,15 +555,22 @@ async function cleanupNewUploadedLocalDesignAssets(req) {
 const searchDesignLibrary = asyncHandler(async (req, res) => {
   const searchQuery = hasText(req.query.q) ? String(req.query.q).trim() : null;
 
-  const allLocalDesigns = await getActiveLocalDesigns();
-
-  const localDesigns = allLocalDesigns
-    .filter((localDesign) => matchesLocalDesignSearch(localDesign, searchQuery))
-    .filter((localDesign) =>
-      matchesLocalDesignCategory(localDesign, req.query.category),
-    )
-    .filter((localDesign) => matchesLocalDesignTag(localDesign, req.query.tag))
-    .map(normalizeLocalDesign);
+  const localResult = await searchActiveLocalDesigns({
+    searchQuery,
+    category: hasText(req.query.category)
+      ? String(req.query.category).trim()
+      : null,
+    tag: hasText(req.query.tag) ? String(req.query.tag).trim() : null,
+    sourceKind: hasText(req.query.sourceKind)
+      ? String(req.query.sourceKind).trim()
+      : null,
+    printReady: parsePrintReadyFilter(req.query.printReady),
+    sort: hasText(req.query.localSort)
+      ? String(req.query.localSort).trim()
+      : "newest",
+    page: Number(req.query.localPage || 1),
+    limit: Number(req.query.localLimit || 12),
+  });
 
   let mmfResults = null;
   let mmfStatus = {
@@ -663,7 +631,13 @@ const searchDesignLibrary = asyncHandler(async (req, res) => {
       200,
       {
         mmfResults: curatedMmfResults,
-        localDesigns,
+        localDesigns: {
+          items: localResult.items.map(normalizeLocalDesign),
+          page: localResult.page,
+          limit: localResult.limit,
+          totalCount: localResult.totalCount,
+          totalPages: localResult.totalPages,
+        },
         mmfStatus,
       },
       "Design library results fetched successfully",
