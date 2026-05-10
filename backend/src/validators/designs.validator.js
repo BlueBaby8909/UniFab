@@ -6,6 +6,7 @@ import {
 
 const ALLOWED_SORT_VALUES = ["visits", "date", "popularity"];
 const ALLOWED_ORDER_VALUES = ["asc", "desc"];
+const ALLOWED_DESIGN_TAB_VALUES = ["local", "mmf"];
 const ALLOWED_LOCAL_SORT_VALUES = [
   "newest",
   "oldest",
@@ -20,6 +21,10 @@ function hasText(value) {
 
 const searchDesignLibraryValidator = () => {
   return [
+    query("tab")
+      .optional()
+      .isIn(ALLOWED_DESIGN_TAB_VALUES)
+      .withMessage("Tab must be either local or mmf"),
     query("q")
       .optional()
       .trim()

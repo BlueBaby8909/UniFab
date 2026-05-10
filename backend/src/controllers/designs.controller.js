@@ -553,24 +553,53 @@ async function cleanupNewUploadedLocalDesignAssets(req) {
 }
 
 const searchDesignLibrary = asyncHandler(async (req, res) => {
+  const activeTab = hasText(req.query.tab)
+    ? String(req.query.tab).trim()
+    : "local";
+
+  const isLocalTab = activeTab === "local";
+  const isMmfTab = activeTab === "mmf";
   const searchQuery = hasText(req.query.q) ? String(req.query.q).trim() : null;
 
-  const localResult = await searchActiveLocalDesigns({
-    searchQuery,
-    category: hasText(req.query.category)
-      ? String(req.query.category).trim()
-      : null,
-    tag: hasText(req.query.tag) ? String(req.query.tag).trim() : null,
-    sourceKind: hasText(req.query.sourceKind)
-      ? String(req.query.sourceKind).trim()
-      : null,
-    printReady: parsePrintReadyFilter(req.query.printReady),
-    sort: hasText(req.query.localSort)
-      ? String(req.query.localSort).trim()
-      : "newest",
+  let localResult = {
+    items: [],
     page: Number(req.query.localPage || 1),
     limit: Number(req.query.localLimit || 12),
-  });
+    totalCount: 0,
+    totalPages: 1,
+  };
+
+  if (isLocalTab) {
+    localResult = await searchActiveLocalDesigns({
+      searchQuery,
+      category: hasText(req.query.category)
+        ? String(req.query.category).trim()
+        : null,
+      tag: hasText(req.query.tag) ? String(req.query.tag).trim() : null,
+      sourceKind: hasText(req.query.sourceKind)
+        ? String(req.query.sourceKind).trim()
+        : null,
+      printReady: parsePrintReadyFilter(req.query.printReady),
+      sort: hasText(req.query.localSort)
+        ? String(req.query.localSort).trim()
+        : "newest",
+      page: Number(req.query.localPage || 1),
+      limit: Number(req.query.localLimit || 12),
+    });
+  }
+
+  const mmfPage = Number(req.query.mmfPage || req.query.page || 1);
+  const mmfPerPage = Number(req.query.mmfPerPage || req.query.per_page || 12);
+  const mmfSort = hasText(req.query.mmfSort)
+    ? String(req.query.mmfSort).trim()
+    : hasText(req.query.sort)
+      ? String(req.query.sort).trim()
+      : "popularity";
+  const mmfOrder = hasText(req.query.mmfOrder)
+    ? String(req.query.mmfOrder).trim()
+    : hasText(req.query.order)
+      ? String(req.query.order).trim()
+      : "desc";
 
   let mmfResults = null;
   let mmfStatus = {
@@ -578,23 +607,8 @@ const searchDesignLibrary = asyncHandler(async (req, res) => {
     message: null,
   };
 
-  if (searchQuery) {
+  if (isMmfTab && searchQuery) {
     try {
-      const mmfPage = Number(req.query.mmfPage || req.query.page || 1);
-      const mmfPerPage = Number(
-        req.query.mmfPerPage || req.query.per_page || 12,
-      );
-      const mmfSort = hasText(req.query.mmfSort)
-        ? String(req.query.mmfSort).trim()
-        : hasText(req.query.sort)
-          ? String(req.query.sort).trim()
-          : "popularity";
-      const mmfOrder = hasText(req.query.mmfOrder)
-        ? String(req.query.mmfOrder).trim()
-        : hasText(req.query.order)
-          ? String(req.query.order).trim()
-          : "desc";
-
       mmfResults = await searchObjects({
         q: searchQuery,
         page: mmfPage,
@@ -612,10 +626,8 @@ const searchDesignLibrary = asyncHandler(async (req, res) => {
 
   let curatedMmfResults = {
     items: [],
-    page: searchQuery ? Number(req.query.mmfPage || req.query.page || 1) : 1,
-    limit: searchQuery
-      ? Number(req.query.mmfPerPage || req.query.per_page || 12)
-      : 12,
+    page: Math.max(mmfPage, 1),
+    limit: Math.max(mmfPerPage, 1),
     totalCount: 0,
     totalPages: 1,
     visibleCount: 0,
@@ -641,8 +653,6 @@ const searchDesignLibrary = asyncHandler(async (req, res) => {
       (item) => !item.override?.isPinned,
     );
 
-    const mmfPage = Number(req.query.mmfPage || req.query.page || 1);
-    const mmfPerPage = Number(req.query.mmfPerPage || req.query.per_page || 12);
     const mmfTotalCount = Number(
       mmfResults.totalCount || visibleItems.length || 0,
     );
@@ -664,6 +674,7 @@ const searchDesignLibrary = asyncHandler(async (req, res) => {
     new ApiResponse(
       200,
       {
+        activeTab,
         mmfResults: curatedMmfResults,
         localDesigns: {
           items: localResult.items.map(normalizeLocalDesign),
