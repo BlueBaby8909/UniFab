@@ -398,7 +398,7 @@ export default function LocalDesignDetail() {
                 {isQuoting
                   ? "Calculating..."
                   : design.isPrintReady
-                    ? "View quote"
+                    ? "Instant Quote"
                     : "Not Print Ready"}
               </Button>
             </form>

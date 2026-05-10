@@ -44,6 +44,7 @@ import {
 } from "../middlewares/local-design-upload.middleware.js";
 import { removeManagedLocalDesignFile } from "../utils/local-design-storage.util.js";
 import { runDesignModerationPipeline } from "../services/design-moderation-pipeline.service.js";
+import { mapMmfObjectToLocalDesign } from "../services/mmf-print-ready-mapping.service.js";
 
 const DESIGN_MODERATION_STATUSES = new Set([
   "draft",
@@ -534,6 +535,33 @@ async function resolveLinkedLocalDesignId(body) {
   }
 
   return linkedLocalDesignId;
+}
+
+async function resolveMmfPrintReadyLinkedDesignId({
+  mmfObjectId,
+  body,
+  existingLinkedLocalDesignId = null,
+  isPrintReady,
+  adminUserId,
+}) {
+  const linkedLocalDesignId = Object.prototype.hasOwnProperty.call(
+    body,
+    "linkedLocalDesignId",
+  )
+    ? await resolveLinkedLocalDesignId(body)
+    : existingLinkedLocalDesignId;
+
+  if (!isPrintReady || linkedLocalDesignId) {
+    return linkedLocalDesignId;
+  }
+
+  const mmfObject = await getObjectById(mmfObjectId);
+  const { localDesign } = await mapMmfObjectToLocalDesign({
+    mmfObject,
+    adminUserId,
+  });
+
+  return localDesign.id;
 }
 
 async function cleanupNewUploadedLocalDesignAssets(req) {
@@ -1171,7 +1199,7 @@ const publishMyDesign = asyncHandler(async (req, res) => {
         toStatus: moderation.status,
         summary: moderation.summary,
         metadata: {
-          decisionSource: "rules",
+          decisionSource: moderation.decisionSource,
           flags: moderation.flags,
         },
       },
@@ -1473,14 +1501,12 @@ const createDesignOverride = asyncHandler(async (req, res) => {
 
   const isPrintReady =
     parseOptionalBoolean(req.body.isPrintReady, "isPrintReady") ?? false;
-  const linkedLocalDesignId = await resolveLinkedLocalDesignId(req.body);
-
-  if (isPrintReady && !linkedLocalDesignId) {
-    throw new ApiError(
-      400,
-      "A print-ready MMF override must link to an active local design",
-    );
-  }
+  const linkedLocalDesignId = await resolveMmfPrintReadyLinkedDesignId({
+    mmfObjectId,
+    body: req.body,
+    isPrintReady,
+    adminUserId: req.user.id,
+  });
 
   const designOverride = await createDesignOverrideRecord({
     mmfObjectId,
@@ -1519,15 +1545,19 @@ const updateDesignOverride = asyncHandler(async (req, res) => {
     req.body,
     "linkedLocalDesignId",
   )
-    ? await resolveLinkedLocalDesignId(req.body)
-    : existingOverride.linked_local_design_id;
-
-  if (isPrintReady && !linkedLocalDesignId) {
-    throw new ApiError(
-      400,
-      "A print-ready MMF override must link to an active local design",
-    );
-  }
+    ? await resolveMmfPrintReadyLinkedDesignId({
+        mmfObjectId: existingOverride.mmf_object_id,
+        body: req.body,
+        isPrintReady,
+        adminUserId: req.user.id,
+      })
+    : await resolveMmfPrintReadyLinkedDesignId({
+        mmfObjectId: existingOverride.mmf_object_id,
+        body: req.body,
+        existingLinkedLocalDesignId: existingOverride.linked_local_design_id,
+        isPrintReady,
+        adminUserId: req.user.id,
+      });
 
   const designOverride = await updateDesignOverrideById(overrideId, {
     isHidden:

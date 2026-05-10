@@ -6,7 +6,10 @@ import {
   createQuoteRecord,
   getValidQuoteRecordByToken,
 } from "../models/quote-record.model.js";
-import { getLocalDesignById } from "../models/local-design.model.js";
+import {
+  getLocalDesignById,
+  getLocalDesignByIdForAdmin,
+} from "../models/local-design.model.js";
 import { getDesignOverrideByMmfObjectId } from "../models/design-overrides.model.js";
 import {
   getDesignRequestById,
@@ -495,12 +498,16 @@ const calculateMmfDesignQuote = asyncHandler(async (req, res) => {
     );
   }
 
-  const linkedLocalDesign = await getLocalDesignById(
+  const linkedLocalDesign = await getLocalDesignByIdForAdmin(
     override.linked_local_design_id,
   );
 
   if (!linkedLocalDesign) {
     throw new ApiError(404, "Linked printable local design not found");
+  }
+
+  if (linkedLocalDesign.archived_at) {
+    throw new ApiError(410, "Linked printable local design is archived");
   }
 
   if (!linkedLocalDesign.file_url) {

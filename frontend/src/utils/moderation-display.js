@@ -50,6 +50,7 @@ const MODERATION_FLAG_LABELS = {
   ai_moderation_disabled: "AI moderation disabled",
   ai_moderation_unavailable: "AI moderation unavailable",
   ai_moderation_request_failed: "AI moderation request failed",
+  ai_moderation_unexpected_response: "AI moderation response mismatch",
 
   image_no_flags: "Thumbnail image check passed",
   image_flagged_content: "Thumbnail image flagged content",
@@ -58,6 +59,12 @@ const MODERATION_FLAG_LABELS = {
   image_moderation_unavailable: "Image moderation unavailable",
   image_moderation_request_failed: "Image moderation request failed",
 
+  render_moderation_disabled: "3D render moderation disabled",
+  render_moderation_failed: "3D render generation failed",
+  render_no_flags: "3D render check passed",
+  render_flagged_content: "3D render flagged content",
+
+  inappropriate_language: "Inappropriate language",
   prohibited_content: "Prohibited content",
   needs_context: "Needs admin context",
 };
@@ -73,6 +80,8 @@ const MODERATION_FLAG_DESCRIPTIONS = {
     "AI text moderation could not run, so the design was routed safely to review.",
   ai_moderation_request_failed:
     "The AI text moderation request failed, so the design was routed safely to review.",
+  ai_moderation_unexpected_response:
+    "The AI moderation API did not return one result for each checked field, so the design was routed safely to review.",
 
   image_no_flags:
     "The thumbnail image moderation check did not find flagged content.",
@@ -87,6 +96,17 @@ const MODERATION_FLAG_DESCRIPTIONS = {
   image_moderation_request_failed:
     "The image moderation request failed, so the design was routed safely to review.",
 
+  render_moderation_disabled:
+    "Generated 3D render moderation is not enabled yet.",
+  render_moderation_failed:
+    "The system could not generate preview renders from the model, so the design should be reviewed by FabLab staff.",
+  render_no_flags:
+    "Generated 3D render moderation did not find flagged model preview content.",
+  render_flagged_content:
+    "Generated 3D render moderation found content that needs FabLab review.",
+
+  inappropriate_language:
+    "A local rules check found profanity or abusive language in the submission metadata.",
   prohibited_content: "A local rules check found a prohibited term.",
   needs_context: "A local rules check found a term that needs admin review.",
 };

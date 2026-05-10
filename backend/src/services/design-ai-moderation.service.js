@@ -1,17 +1,61 @@
 const DEFAULT_MODERATION_MODEL = "omni-moderation-latest";
+const DESIGN_AI_MODERATION_SERVICE_VERSION = "field-inputs-v2";
 
-function collectDesignText(design) {
+function getModerationModel() {
+  return process.env.OPENAI_MODERATION_MODEL || DEFAULT_MODERATION_MODEL;
+}
+
+function hasText(value) {
+  return value !== undefined && value !== null && String(value).trim() !== "";
+}
+
+function collectDesignModerationInputs(design) {
+  const inputs = [
+    {
+      field: "title",
+      text: design.title,
+    },
+    {
+      field: "description",
+      text: design.description,
+    },
+    {
+      field: "license",
+      text: design.license_type,
+    },
+    {
+      field: "category",
+      text: design.category_name,
+    },
+    {
+      field: "tags",
+      text: (design.tags || []).map((tag) => tag.name).join(", "),
+    },
+    {
+      field: "material",
+      text: design.material,
+    },
+    {
+      field: "dimensions",
+      text: design.dimensions,
+    },
+  ]
+    .filter((item) => hasText(item.text))
+    .map((item) => ({
+      ...item,
+      text: String(item.text).trim(),
+    }));
+
+  if (inputs.length > 0) {
+    return inputs;
+  }
+
   return [
-    `Title: ${design.title || ""}`,
-    `Description: ${design.description || ""}`,
-    `License: ${design.license_type || ""}`,
-    `Category: ${design.category_name || ""}`,
-    `Tags: ${(design.tags || []).map((tag) => tag.name).join(", ")}`,
-    `Material: ${design.material || ""}`,
-    `Dimensions: ${design.dimensions || ""}`,
-    `File: ${design.file_url || ""}`,
-    `Thumbnail: ${design.thumbnail_url || ""}`,
-  ].join("\n");
+    {
+      field: "submission",
+      text: "Untitled design submission",
+    },
+  ];
 }
 
 function aiDisabledResult() {
@@ -58,6 +102,7 @@ async function runDesignAiModeration(design) {
     return aiUnavailableResult("OPENAI_API_KEY is not configured.");
   }
 
+  const moderationInputs = collectDesignModerationInputs(design);
   let response;
 
   try {
@@ -68,8 +113,8 @@ async function runDesignAiModeration(design) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODERATION_MODEL || DEFAULT_MODERATION_MODEL,
-        input: collectDesignText(design),
+        model: getModerationModel(),
+        input: moderationInputs.map((item) => item.text),
       }),
     });
   } catch (error) {
@@ -104,9 +149,40 @@ async function runDesignAiModeration(design) {
   }
 
   const data = await response.json();
-  const result = data.results?.[0];
+  const results = Array.isArray(data.results) ? data.results : [];
 
-  if (result?.flagged) {
+  if (results.length !== moderationInputs.length) {
+    return {
+      status: "needs_admin_review",
+      isActive: false,
+      summary: "AI moderation returned an unexpected result count; admin review is required.",
+      feedback:
+        "Your design has been submitted for FabLab review before it appears publicly.",
+      flags: [
+        {
+          source: "ai",
+          severity: "medium",
+          category: "ai_moderation_unexpected_response",
+          model: getModerationModel(),
+          inputCount: moderationInputs.length,
+          resultCount: results.length,
+          checkedFields: moderationInputs.map((input) => input.field),
+        },
+      ],
+    };
+  }
+
+  const flaggedResults = results
+    .map((result, index) => ({
+      result,
+      input: moderationInputs[index] || {
+        field: "unknown",
+        text: null,
+      },
+    }))
+    .filter(({ result }) => result?.flagged);
+
+  if (flaggedResults.length > 0) {
     return {
       status: "needs_admin_review",
       isActive: false,
@@ -114,13 +190,14 @@ async function runDesignAiModeration(design) {
       feedback:
         "This design needs FabLab review before it can appear publicly.",
       flags: [
-        {
+        ...flaggedResults.map(({ result, input }) => ({
           source: "ai",
           severity: "high",
           category: "ai_flagged_content",
+          field: input.field,
           categories: result.categories,
           categoryScores: result.category_scores,
-        },
+        })),
       ],
     };
   }
@@ -135,9 +212,14 @@ async function runDesignAiModeration(design) {
         source: "ai",
         severity: "info",
         category: "ai_no_text_flags",
+        model: getModerationModel(),
+        inputCount: moderationInputs.length,
+        resultCount: results.length,
+        checkedFields: moderationInputs.map((input) => input.field),
       },
     ],
   };
 }
 
-export { runDesignAiModeration };
+export { collectDesignModerationInputs, runDesignAiModeration };
+export { DESIGN_AI_MODERATION_SERVICE_VERSION };

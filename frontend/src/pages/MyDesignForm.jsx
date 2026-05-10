@@ -245,11 +245,14 @@ export default function MyDesignForm() {
       setError("");
       setSuccessMessage("");
 
-      const data = await publishMyDesign(currentDesign.id);
+      const savedDesign = await saveDesign();
+      const data = await publishMyDesign(savedDesign?.id || currentDesign.id);
       const payload = data.data || data;
       const updatedDesign = payload.localDesign || payload.design;
 
       await loadDesign();
+      setDesignFile(null);
+      setThumbnailImage(null);
       setSuccessMessage(getPublishResultMessage(updatedDesign));
     } catch (err) {
       setError(err.message);

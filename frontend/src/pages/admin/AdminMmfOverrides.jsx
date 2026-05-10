@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
-  createAdminDesignOverride,
   deleteAdminDesignOverride,
-  getAdminLocalDesigns,
   getAdminDesignOverrides,
   updateAdminDesignOverride,
 } from "../../api/designs";
+
+const FILTERS = [
+  { key: "all", label: "All" },
+  { key: "print_ready", label: "Print Ready" },
+  { key: "hidden", label: "Hidden" },
+  { key: "pinned", label: "Pinned" },
+  { key: "needs_file", label: "Needs Mapped File" },
+];
 
 function StatusBadge({ label, tone = "neutral" }) {
   const toneClasses = {
@@ -24,35 +31,46 @@ function StatusBadge({ label, tone = "neutral" }) {
   );
 }
 
+function matchesFilter(override, filter) {
+  if (filter === "print_ready") return Boolean(override.isPrintReady);
+  if (filter === "hidden") return Boolean(override.isHidden);
+  if (filter === "pinned") return Boolean(override.isPinned);
+  if (filter === "needs_file") {
+    return Boolean(override.isPrintReady) && !override.linkedLocalDesignId;
+  }
+
+  return true;
+}
+
+function getClientNotePreview(note) {
+  if (!note) return "-";
+
+  const normalizedNote = String(note).trim();
+  if (normalizedNote.length <= 80) return normalizedNote;
+
+  return `${normalizedNote.slice(0, 77)}...`;
+}
+
 export default function AdminMmfOverrides() {
   const [overrides, setOverrides] = useState([]);
-  const [localDesigns, setLocalDesigns] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-
-  const [form, setForm] = useState({
-    mmfObjectId: "",
-    isHidden: false,
-    isPinned: false,
-    isPrintReady: false,
-    linkedLocalDesignId: "",
-    clientNote: "",
-  });
-
-  const [isCreating, setIsCreating] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("all");
 
   const [editingOverrideId, setEditingOverrideId] = useState(null);
   const [editForm, setEditForm] = useState({
     isHidden: false,
     isPinned: false,
     isPrintReady: false,
-    linkedLocalDesignId: "",
     clientNote: "",
   });
   const [isUpdating, setIsUpdating] = useState(false);
 
   const [deletingOverrideId, setDeletingOverrideId] = useState(null);
+  const filteredOverrides = overrides.filter((override) =>
+    matchesFilter(override, activeFilter),
+  );
 
   useEffect(() => {
     async function loadOverrides() {
@@ -76,102 +94,12 @@ export default function AdminMmfOverrides() {
     loadOverrides();
   }, []);
 
-  useEffect(() => {
-    async function loadLocalDesigns() {
-      try {
-        const data = await getAdminLocalDesigns();
-        const payload = data.data || data;
-        setLocalDesigns(
-          (payload.localDesigns || payload.designs || []).filter(
-            (design) => design.isActive,
-          ),
-        );
-      } catch {
-        setLocalDesigns([]);
-      }
-    }
-
-    loadLocalDesigns();
-  }, []);
-
-  const handleCreateOverride = async (event) => {
-    event.preventDefault();
-
-    const mmfObjectId = Number(form.mmfObjectId);
-    const hasMeaningfulOverride =
-      form.isHidden ||
-      form.isPinned ||
-      form.isPrintReady ||
-      form.clientNote.trim() !== "";
-
-    if (!Number.isInteger(mmfObjectId) || mmfObjectId < 1) {
-      setError("MMF Object ID must be a positive number.");
-      return;
-    }
-
-    if (!hasMeaningfulOverride) {
-      setError(
-        "Choose at least one override: print ready, pinned, hidden, or a client note.",
-      );
-      return;
-    }
-
-    if (form.isPrintReady && !form.linkedLocalDesignId) {
-      setError(
-        "Print-ready MMF overrides must link to an active local design.",
-      );
-      return;
-    }
-
-    try {
-      setIsCreating(true);
-      setError("");
-      setSuccessMessage("");
-
-      const data = await createAdminDesignOverride({
-        mmfObjectId,
-        isHidden: form.isHidden,
-        isPinned: form.isPinned,
-        isPrintReady: form.isPrintReady,
-        linkedLocalDesignId: form.linkedLocalDesignId || null,
-        clientNote: form.clientNote.trim(),
-      });
-
-      const createdOverride =
-        data.data?.designOverride ||
-        data.designOverride ||
-        data.override ||
-        data;
-
-      setOverrides((currentOverrides) => [
-        createdOverride,
-        ...currentOverrides,
-      ]);
-
-      setForm({
-        mmfObjectId: "",
-        isHidden: false,
-        isPinned: false,
-        isPrintReady: false,
-        linkedLocalDesignId: "",
-        clientNote: "",
-      });
-
-      setSuccessMessage("MMF override created.");
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
   const startEditingOverride = (override) => {
     setEditingOverrideId(override.id);
     setEditForm({
       isHidden: Boolean(override.isHidden),
       isPinned: Boolean(override.isPinned),
       isPrintReady: Boolean(override.isPrintReady),
-      linkedLocalDesignId: override.linkedLocalDesignId || "",
       clientNote: override.clientNote || "",
     });
     setError("");
@@ -184,14 +112,13 @@ export default function AdminMmfOverrides() {
       isHidden: false,
       isPinned: false,
       isPrintReady: false,
-      linkedLocalDesignId: "",
       clientNote: "",
     });
     setError("");
     setSuccessMessage("");
   };
 
-  const handleUpdateOverride = async (overrideId) => {
+  const handleUpdateOverride = async (override) => {
     const hasMeaningfulOverride =
       editForm.isHidden ||
       editForm.isPinned ||
@@ -205,10 +132,13 @@ export default function AdminMmfOverrides() {
       return;
     }
 
-    if (editForm.isPrintReady && !editForm.linkedLocalDesignId) {
-      setError(
-        "Print-ready MMF overrides must link to an active local design.",
-      );
+    if (
+      editForm.isPrintReady &&
+      !override.isPrintReady &&
+      !window.confirm(
+        "Mark this MMF design Print Ready only after downloading the design files from the original MyMiniFactory page and verifying the model locally. UniFab will map a supported STL, OBJ, or 3MF file through the MyMiniFactory API.",
+      )
+    ) {
       return;
     }
 
@@ -217,11 +147,10 @@ export default function AdminMmfOverrides() {
       setError("");
       setSuccessMessage("");
 
-      const data = await updateAdminDesignOverride(overrideId, {
+      const data = await updateAdminDesignOverride(override.id, {
         isHidden: editForm.isHidden,
         isPinned: editForm.isPinned,
         isPrintReady: editForm.isPrintReady,
-        linkedLocalDesignId: editForm.linkedLocalDesignId || null,
         clientNote: editForm.clientNote.trim(),
       });
 
@@ -233,7 +162,7 @@ export default function AdminMmfOverrides() {
 
       setOverrides((currentOverrides) =>
         currentOverrides.map((override) =>
-          override.id === overrideId ? updatedOverride : override,
+          override.id === updatedOverride.id ? updatedOverride : override,
         ),
       );
 
@@ -242,7 +171,6 @@ export default function AdminMmfOverrides() {
         isHidden: false,
         isPinned: false,
         isPrintReady: false,
-        linkedLocalDesignId: "",
         clientNote: "",
       });
 
@@ -289,10 +217,22 @@ export default function AdminMmfOverrides() {
   return (
     <main className="mx-auto max-w-6xl p-8">
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-3xl font-bold">MMF Readiness Controls</h1>
-        <p className="mt-2 text-slate-600">
-          Manage MyMiniFactory visibility, pinning, and print-readiness.
-        </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">MMF Readiness Controls</h1>
+            <p className="mt-2 text-slate-600">
+              View and edit existing MyMiniFactory overrides. Use the Design
+              Library to find new MMF designs and manage them in context.
+            </p>
+          </div>
+
+          <Link
+            to="/designs"
+            className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition hover:border-slate-400 hover:bg-slate-50"
+          >
+            Find MMF designs
+          </Link>
+        </div>
 
         {isLoading && (
           <p className="mt-6 text-slate-600">Loading MMF overrides...</p>
@@ -310,141 +250,51 @@ export default function AdminMmfOverrides() {
           </div>
         )}
 
-        <form
-          onSubmit={handleCreateOverride}
-          className="mt-6 rounded-lg border border-slate-200 p-4"
-        >
-          <h2 className="text-lg font-semibold text-slate-950">
-            Add MMF Override
-          </h2>
+        {overrides.length > 0 && (
+          <div className="mt-6 flex flex-wrap gap-2">
+            {FILTERS.map((filter) => {
+              const isActive = activeFilter === filter.key;
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-            <div>
-              <label className="block text-sm font-medium text-slate-700">
-                MMF Object ID
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={form.mmfObjectId}
-                onChange={(event) =>
-                  setForm((currentForm) => ({
-                    ...currentForm,
-                    mmfObjectId: event.target.value,
-                  }))
-                }
-                className="mt-2 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Client note
-              </label>
-              <input
-                type="text"
-                value={form.clientNote}
-                onChange={(event) =>
-                  setForm((currentForm) => ({
-                    ...currentForm,
-                    clientNote: event.target.value,
-                  }))
-                }
-                className="mt-2 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700">
-                Linked local design
-              </label>
-              <select
-                value={form.linkedLocalDesignId}
-                onChange={(event) =>
-                  setForm((currentForm) => ({
-                    ...currentForm,
-                    linkedLocalDesignId: event.target.value,
-                  }))
-                }
-                className="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-              >
-                <option value="">No linked printable file</option>
-                {localDesigns.map((design) => (
-                  <option key={design.id} value={design.id}>
-                    #{design.id} {design.title}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-slate-500">
-                Required for direct MMF quote generation.
-              </p>
-            </div>
+              return (
+                <button
+                  key={filter.key}
+                  type="button"
+                  onClick={() => setActiveFilter(filter.key)}
+                  className={`rounded-md border px-3 py-2 text-sm font-semibold transition ${
+                    isActive
+                      ? "border-slate-950 bg-slate-950 text-white"
+                      : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              );
+            })}
           </div>
-
-          <div className="mt-4 flex flex-wrap gap-4">
-            <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={form.isPrintReady}
-                onChange={(event) =>
-                  setForm((currentForm) => ({
-                    ...currentForm,
-                    isPrintReady: event.target.checked,
-                  }))
-                }
-              />
-              Print ready
-            </label>
-
-            <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={form.isPinned}
-                onChange={(event) =>
-                  setForm((currentForm) => ({
-                    ...currentForm,
-                    isPinned: event.target.checked,
-                  }))
-                }
-              />
-              Pinned
-            </label>
-
-            <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={form.isHidden}
-                onChange={(event) =>
-                  setForm((currentForm) => ({
-                    ...currentForm,
-                    isHidden: event.target.checked,
-                  }))
-                }
-              />
-              Hidden
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isCreating}
-            className="mt-4 rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-          >
-            {isCreating ? "Creating..." : "Create Override"}
-          </button>
-        </form>
+        )}
 
         {!isLoading && !error && overrides.length === 0 && (
           <div className="mt-6 rounded-lg border border-dashed border-slate-300 p-6 text-center">
             <p className="font-medium text-slate-950">No MMF overrides yet.</p>
             <p className="mt-1 text-sm text-slate-500">
-              Add an override when a MyMiniFactory design needs readiness,
-              pinning, or visibility control.
+              Use the Design Library to find a MyMiniFactory design and manage
+              it from the design detail page.
             </p>
           </div>
         )}
 
-        {overrides.length > 0 && (
+        {overrides.length > 0 && filteredOverrides.length === 0 && (
+          <div className="mt-6 rounded-lg border border-dashed border-slate-300 p-6 text-center">
+            <p className="font-medium text-slate-950">
+              No overrides match this filter.
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              Choose another filter or find MMF designs from the Design Library.
+            </p>
+          </div>
+        )}
+
+        {filteredOverrides.length > 0 && (
           <div className="mt-6 overflow-hidden rounded-lg border border-slate-200">
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-slate-600">
@@ -453,7 +303,7 @@ export default function AdminMmfOverrides() {
                   <th className="px-4 py-3 font-medium">Print Ready</th>
                   <th className="px-4 py-3 font-medium">Pinned</th>
                   <th className="px-4 py-3 font-medium">Hidden</th>
-                  <th className="px-4 py-3 font-medium">Linked Design</th>
+                  <th className="px-4 py-3 font-medium">Mapped File</th>
                   <th className="px-4 py-3 font-medium">Client Note</th>
                   <th className="px-4 py-3 font-medium">Updated</th>
                   <th className="px-4 py-3 font-medium">Actions</th>
@@ -461,10 +311,15 @@ export default function AdminMmfOverrides() {
               </thead>
 
               <tbody className="divide-y divide-slate-200">
-                {overrides.map((override) => (
+                {filteredOverrides.map((override) => (
                   <tr key={override.id}>
                     <td className="px-4 py-3 font-medium text-slate-950">
-                      {override.mmfObjectId}
+                      <Link
+                        to={`/designs/mmf/${override.mmfObjectId}`}
+                        className="underline"
+                      >
+                        {override.mmfObjectId}
+                      </Link>
                     </td>
 
                     <td className="px-4 py-3 text-slate-600">
@@ -525,28 +380,20 @@ export default function AdminMmfOverrides() {
                     </td>
 
                     <td className="px-4 py-3 text-slate-600">
-                      {editingOverrideId === override.id ? (
-                        <select
-                          value={editForm.linkedLocalDesignId}
-                          onChange={(event) =>
-                            setEditForm((currentForm) => ({
-                              ...currentForm,
-                              linkedLocalDesignId: event.target.value,
-                            }))
-                          }
-                          className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+                      {override.linkedLocalDesignId ? (
+                        <Link
+                          to={`/designs/local/${override.linkedLocalDesignId}`}
+                          className="font-semibold text-slate-950 underline"
                         >
-                          <option value="">None</option>
-                          {localDesigns.map((design) => (
-                            <option key={design.id} value={design.id}>
-                              #{design.id} {design.title}
-                            </option>
-                          ))}
-                        </select>
-                      ) : override.linkedLocalDesignId ? (
-                        `#${override.linkedLocalDesignId}`
+                          #{override.linkedLocalDesignId}
+                        </Link>
                       ) : (
-                        "-"
+                        <span className="text-slate-500">
+                          {editingOverrideId === override.id &&
+                          editForm.isPrintReady
+                            ? "Will map through MMF API on save"
+                            : "-"}
+                        </span>
                       )}
                     </td>
 
@@ -564,7 +411,7 @@ export default function AdminMmfOverrides() {
                           className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
                         />
                       ) : (
-                        override.clientNote || "-"
+                        getClientNotePreview(override.clientNote)
                       )}
                     </td>
 
@@ -579,7 +426,7 @@ export default function AdminMmfOverrides() {
                         <div className="flex gap-2">
                           <button
                             type="button"
-                            onClick={() => handleUpdateOverride(override.id)}
+                            onClick={() => handleUpdateOverride(override)}
                             disabled={isUpdating}
                             className="font-semibold text-slate-950 underline disabled:cursor-not-allowed disabled:text-slate-400"
                           >
@@ -596,7 +443,14 @@ export default function AdminMmfOverrides() {
                           </button>
                         </div>
                       ) : (
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
+                          <Link
+                            to={`/designs/mmf/${override.mmfObjectId}`}
+                            className="font-semibold text-slate-950 underline"
+                          >
+                            Open
+                          </Link>
+
                           <button
                             type="button"
                             onClick={() => startEditingOverride(override)}

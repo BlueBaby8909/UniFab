@@ -15,6 +15,7 @@ import designsRoutes from "./src/routes/designs.routes.js";
 import designRequestRoutes from "./src/routes/design-requests.routes.js";
 import printRequestRoutes from "./src/routes/print-request.routes.js";
 import printersRoutes from "./src/routes/printers.routes.js";
+import { DESIGN_AI_MODERATION_SERVICE_VERSION } from "./src/services/design-ai-moderation.service.js";
 import { startExpiredQuoteCleanupJob } from "./src/services/quote-cleanup.service.js";
 import { ApiError } from "./src/utils/api-error.js";
 
@@ -154,5 +155,8 @@ app.use((err, req, res, next) => {
 const port = process.env.PORT || 5000;
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
+  console.log(
+    `Design moderation: ai=${process.env.DESIGN_AI_MODERATION_ENABLED === "true" ? "on" : "off"}, image=${process.env.DESIGN_IMAGE_MODERATION_ENABLED === "true" ? "on" : "off"}, render=${process.env.DESIGN_RENDER_MODERATION_ENABLED === "true" ? "on" : "off"}, aiService=${DESIGN_AI_MODERATION_SERVICE_VERSION}`,
+  );
   startExpiredQuoteCleanupJob();
 });

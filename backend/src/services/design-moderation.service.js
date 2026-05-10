@@ -8,6 +8,21 @@ const CLEAR_REJECT_TERMS = [
   "adult",
   "nsfw",
 ];
+const INAPPROPRIATE_LANGUAGE_TERMS = [
+  "asshole",
+  "bitch",
+  "bullshit",
+  "cunt",
+  "dick",
+  "fuck",
+  "fuck you",
+  "fucker",
+  "fucking",
+  "motherfucker",
+  "piss",
+  "shit",
+  "shitty",
+];
 
 const REVIEW_TERMS = [
   "replica",
@@ -36,21 +51,56 @@ function collectDesignText(design) {
     .join(" ");
 }
 
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function matchTerms(text, terms) {
-  return terms.filter((term) => text.includes(term));
+  const matches = [];
+  const sortedTerms = [...terms].sort((firstTerm, secondTerm) => {
+    return secondTerm.length - firstTerm.length;
+  });
+
+  for (const term of sortedTerms) {
+    const escapedTerm = escapeRegExp(term).replaceAll("\\ ", "\\s+");
+    const pattern = new RegExp(`(^|[^a-z0-9])${escapedTerm}([^a-z0-9]|$)`, "i");
+
+    if (
+      pattern.test(text) &&
+      !matches.some((matchedTerm) => matchedTerm.includes(term))
+    ) {
+      matches.push(term);
+    }
+  }
+
+  return matches;
 }
 
 function runDesignRulesModeration(design) {
   const text = normalizeText(collectDesignText(design));
-  const rejectMatches = matchTerms(text, CLEAR_REJECT_TERMS);
+  const unsafeMatches = matchTerms(text, CLEAR_REJECT_TERMS);
+  const inappropriateLanguageMatches = matchTerms(
+    text,
+    INAPPROPRIATE_LANGUAGE_TERMS,
+  );
+  const rejectMatches = [...unsafeMatches, ...inappropriateLanguageMatches];
   const reviewMatches = matchTerms(text, REVIEW_TERMS);
   const flags = [];
 
-  for (const term of rejectMatches) {
+  for (const term of unsafeMatches) {
     flags.push({
       source: "rules",
       severity: "high",
       category: "prohibited_content",
+      term,
+    });
+  }
+
+  for (const term of inappropriateLanguageMatches) {
+    flags.push({
+      source: "rules",
+      severity: "high",
+      category: "inappropriate_language",
       term,
     });
   }
@@ -68,9 +118,10 @@ function runDesignRulesModeration(design) {
     return {
       status: "auto_rejected",
       isActive: false,
-      summary: "Rules screening found prohibited or unsafe terms.",
+      summary:
+        "Rules screening found prohibited, unsafe, or inappropriate terms.",
       feedback:
-        "This design appears to include content that may violate FabLab submission policy. Please revise the design details and submit again if this was a mistake.",
+        "This design appears to include language or content that may violate FabLab submission policy. Please revise the design details and submit again if this was a mistake.",
       flags,
     };
   }

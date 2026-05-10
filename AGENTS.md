@@ -10,7 +10,7 @@
 ## Current Workflow Status
 - **Quote Route:** Complete, including interactive model preview and specific slicer-based pre-flight warnings.
 - **Print Request Route:** Complete, including Terms acceptance, final confirmation, visual status timeline, auto-generated payment slips, physical receipt verification, and admin undo.
-- **Design Library Route:** In progress, including My Designs, draft-to-publish publishing, automated appropriateness screening, admin override, and Print Ready instant quoting.
+- **Design Library Route:** In progress. My Designs, draft-to-publish publishing, rules + OpenAI text + thumbnail + generated 3D render moderation, admin override, audit history, and Print Ready separation are implemented. Remaining MMF admin workflows are still pending.
 - **Admin Routes:** Pending, including in-context MMF administration and `/admin/mmf-overrides`.
 - **Auth Route:** Pending, including mandatory email verification before print request submission.
 
@@ -30,10 +30,10 @@
 - "Print Ready" library designs offer instant quoting using secure, backend-cached files.
 - Users can manage uploaded designs in My Designs / Creator Dashboard states such as Draft, Screening, Auto Approved, Needs Admin Review, Auto Rejected, Admin Approved, Admin Rejected, and Hidden; rejected designs stay visible to the owner with feedback.
 - Users can save library submissions as drafts before publishing. Publishing runs automated appropriateness screening before public visibility decisions.
-- Design Library screening should combine auditable local rules with AI moderation for metadata, filenames, thumbnails, and generated 3D model renders when practical.
+- Design Library screening currently combines auditable local rules, OpenAI text moderation, thumbnail image moderation, and generated 3D render moderation for uploaded `.stl`, `.obj`, and `.3mf` files when enabled.
 - Automated screening may auto-approve low-risk content, auto-reject clearly prohibited content, or route uncertain submissions to admin review. Admins must be able to view, override, approve, reject, hide, restore, and manage these decisions.
 - Content approval only controls public Design Library visibility. Print Ready approval is separate and remains stricter because it allows Instant Quote from an admin-verified file.
-- Replacing the model file on an approved design returns it to screening/review, removes public visibility until re-approved, and clears Print Ready status until the file is reverified.
+- Editing an approved design returns it to screening/review, removes public visibility until re-approved, and clears Print Ready status until the file is reverified.
 - Automated and admin moderation decisions should be auditable with stored flags, summaries, feedback, status transitions, and actor/timestamp history.
 - MyMiniFactory designs marked "Needs Review" are not hosted on UniFab; instead, an outbound link directs users to the source.
 - Admins manage MyMiniFactory designs in context from Design Library detail pages using admin-only actions such as Pin, Hide, Add/Edit Client Note, Mark as Print Ready, and editing other override fields already supported by the backend. Print Ready marking should warn admins to verify the design locally first and should map files through the MMF API when possible instead of requiring manual upload or manual local-file linking.
@@ -74,7 +74,7 @@
 - Allow admins to undo the last print request status update when an operational mistake is made.
 - Clean up temporary files after quote expiration, failed validation, or failed processing.
 - Treat MyMiniFactory API access as backend-only; never expose API keys to the frontend.
-- Keep automated Design Library moderation explainable and reviewable; do not hide the reason a design was auto-approved, auto-rejected, flagged, hidden, or restored.
+- Keep automated Design Library moderation explainable and reviewable; do not hide the reason a design was auto-approved, auto-rejected, flagged, hidden, or restored. Preserve rule, AI, thumbnail, and render moderation flags and summaries.
 
 ## Frontend Guidance
 - Clearly separate "View Quote" from "Submit Print Request".
@@ -91,6 +91,7 @@
 - Distinguish content-approved designs from Print Ready designs; public visibility does not automatically mean a file is verified for instant quoting.
 - Keep rejected or auto-rejected user designs visible to the owner with moderation/admin feedback when policy allows.
 - Show admins moderation flags, AI/rule results, owner, submitted date, file previews/renders, and override controls for client-uploaded designs.
+- Approved local designs that are not Print Ready may be browsed and downloaded, but instant quote must stay disabled until an admin marks the verified file Print Ready.
 - Keep admin screens practical and task-oriented: pending review, awaiting payment, payment verified, active printing, and completed requests should be easy to scan.
 
 ## Do

@@ -427,6 +427,12 @@ function parse3mfDimensions(modelPath) {
 }
 
 function readZipTextFiles(buffer) {
+  const centralDirectoryEntries = readZipCentralDirectoryTextFiles(buffer);
+
+  if (centralDirectoryEntries.length > 0) {
+    return centralDirectoryEntries;
+  }
+
   const entries = [];
   let offset = 0;
 
@@ -463,6 +469,205 @@ function readZipTextFiles(buffer) {
   }
 
   return entries;
+}
+
+function readZipCentralDirectoryTextFiles(buffer) {
+  const entries = [];
+  const centralDirectoryInfo = getCentralDirectoryInfo(buffer);
+
+  if (!centralDirectoryInfo) return entries;
+
+  let offset = centralDirectoryInfo.offset;
+  const endOffset = centralDirectoryInfo.offset + centralDirectoryInfo.size;
+
+  while (offset + 46 <= buffer.length && offset < endOffset) {
+    const signature = buffer.readUInt32LE(offset);
+
+    if (signature !== 0x02014b50) break;
+
+    const compressionMethod = buffer.readUInt16LE(offset + 10);
+    const rawCompressedSize = buffer.readUInt32LE(offset + 20);
+    const rawUncompressedSize = buffer.readUInt32LE(offset + 24);
+    const fileNameLength = buffer.readUInt16LE(offset + 28);
+    const extraFieldLength = buffer.readUInt16LE(offset + 30);
+    const fileCommentLength = buffer.readUInt16LE(offset + 32);
+    const rawLocalHeaderOffset = buffer.readUInt32LE(offset + 42);
+    const fileNameStart = offset + 46;
+    const fileNameEnd = fileNameStart + fileNameLength;
+    const extraFieldStart = fileNameEnd;
+    const extraFieldEnd = extraFieldStart + extraFieldLength;
+
+    if (extraFieldEnd > buffer.length || fileNameEnd > buffer.length) break;
+
+    const name = buffer.toString("utf-8", fileNameStart, fileNameEnd);
+    const zip64Values = readZip64ExtraValues({
+      extraField: buffer.subarray(extraFieldStart, extraFieldEnd),
+      needsUncompressedSize: rawUncompressedSize === 0xffffffff,
+      needsCompressedSize: rawCompressedSize === 0xffffffff,
+      needsLocalHeaderOffset: rawLocalHeaderOffset === 0xffffffff,
+    });
+    const compressedSize =
+      rawCompressedSize === 0xffffffff
+        ? zip64Values.compressedSize
+        : rawCompressedSize;
+    const localHeaderOffset =
+      rawLocalHeaderOffset === 0xffffffff
+        ? zip64Values.localHeaderOffset
+        : rawLocalHeaderOffset;
+    const compressedData = readZipEntryCompressedData({
+      buffer,
+      localHeaderOffset,
+      compressedSize,
+    });
+    const text = compressedData
+      ? inflateZipEntryText(compressedData, compressionMethod)
+      : null;
+
+    if (text !== null) entries.push({ name, text });
+
+    offset = extraFieldEnd + fileCommentLength;
+  }
+
+  return entries;
+}
+
+function getCentralDirectoryInfo(buffer) {
+  const eocdOffset = findEndOfCentralDirectoryOffset(buffer);
+
+  if (eocdOffset === -1) return null;
+
+  const centralDirectorySize = buffer.readUInt32LE(eocdOffset + 12);
+  const centralDirectoryOffset = buffer.readUInt32LE(eocdOffset + 16);
+
+  if (
+    centralDirectorySize !== 0xffffffff &&
+    centralDirectoryOffset !== 0xffffffff
+  ) {
+    return {
+      size: centralDirectorySize,
+      offset: centralDirectoryOffset,
+    };
+  }
+
+  return readZip64CentralDirectoryInfo(buffer, eocdOffset);
+}
+
+function findEndOfCentralDirectoryOffset(buffer) {
+  const minimumOffset = Math.max(0, buffer.length - 0xffff - 22);
+
+  for (let offset = buffer.length - 22; offset >= minimumOffset; offset -= 1) {
+    if (buffer.readUInt32LE(offset) === 0x06054b50) {
+      return offset;
+    }
+  }
+
+  return -1;
+}
+
+function readZip64CentralDirectoryInfo(buffer, eocdOffset) {
+  const locatorOffset = eocdOffset - 20;
+
+  if (
+    locatorOffset < 0 ||
+    buffer.readUInt32LE(locatorOffset) !== 0x07064b50
+  ) {
+    return null;
+  }
+
+  const zip64EocdOffset = readUInt64LEAsNumber(buffer, locatorOffset + 8);
+
+  if (
+    zip64EocdOffset + 56 > buffer.length ||
+    buffer.readUInt32LE(zip64EocdOffset) !== 0x06064b50
+  ) {
+    return null;
+  }
+
+  return {
+    size: readUInt64LEAsNumber(buffer, zip64EocdOffset + 40),
+    offset: readUInt64LEAsNumber(buffer, zip64EocdOffset + 48),
+  };
+}
+
+function readZip64ExtraValues({
+  extraField,
+  needsUncompressedSize,
+  needsCompressedSize,
+  needsLocalHeaderOffset,
+}) {
+  const values = {
+    uncompressedSize: null,
+    compressedSize: null,
+    localHeaderOffset: null,
+  };
+  let offset = 0;
+
+  while (offset + 4 <= extraField.length) {
+    const headerId = extraField.readUInt16LE(offset);
+    const dataSize = extraField.readUInt16LE(offset + 2);
+    const dataStart = offset + 4;
+    const dataEnd = dataStart + dataSize;
+
+    if (dataEnd > extraField.length) break;
+
+    if (headerId === 0x0001) {
+      let dataOffset = dataStart;
+
+      if (needsUncompressedSize && dataOffset + 8 <= dataEnd) {
+        values.uncompressedSize = readUInt64LEAsNumber(extraField, dataOffset);
+        dataOffset += 8;
+      }
+
+      if (needsCompressedSize && dataOffset + 8 <= dataEnd) {
+        values.compressedSize = readUInt64LEAsNumber(extraField, dataOffset);
+        dataOffset += 8;
+      }
+
+      if (needsLocalHeaderOffset && dataOffset + 8 <= dataEnd) {
+        values.localHeaderOffset = readUInt64LEAsNumber(extraField, dataOffset);
+      }
+    }
+
+    offset = dataEnd;
+  }
+
+  return values;
+}
+
+function readUInt64LEAsNumber(buffer, offset) {
+  const value = buffer.readBigUInt64LE(offset);
+
+  if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new Error("ZIP64 entry is too large to process safely.");
+  }
+
+  return Number(value);
+}
+
+function readZipEntryCompressedData({
+  buffer,
+  localHeaderOffset,
+  compressedSize,
+}) {
+  if (
+    !Number.isFinite(localHeaderOffset) ||
+    !Number.isFinite(compressedSize) ||
+    localHeaderOffset + 30 > buffer.length
+  ) {
+    return null;
+  }
+
+  const signature = buffer.readUInt32LE(localHeaderOffset);
+  if (signature !== 0x04034b50) return null;
+
+  const fileNameLength = buffer.readUInt16LE(localHeaderOffset + 26);
+  const extraFieldLength = buffer.readUInt16LE(localHeaderOffset + 28);
+  const dataStart = localHeaderOffset + 30 + fileNameLength + extraFieldLength;
+  const dataEnd = dataStart + compressedSize;
+
+  if (dataEnd > buffer.length) return null;
+
+  return buffer.subarray(dataStart, dataEnd);
 }
 
 function inflateZipEntryText(compressedData, compressionMethod) {

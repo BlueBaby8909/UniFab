@@ -223,6 +223,8 @@ export default function DesignLibrary() {
 }
 
 function LocalDesignCard({ design }) {
+  const isPrintReady = Boolean(design.isPrintReady);
+
   return (
     <Link
       to={`/designs/local/${design.id}`}
@@ -255,6 +257,15 @@ function LocalDesignCard({ design }) {
           <p className="mt-2 text-sm text-slate-500">
             No description provided.
           </p>
+        )}
+
+        {isPrintReady && (
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <StatusBadge tone="success">Print Ready</StatusBadge>
+            <span className="text-sm font-semibold text-slate-950">
+              Instant Quote
+            </span>
+          </div>
         )}
       </div>
     </Link>
@@ -315,6 +326,12 @@ function MmfDesignCard({ item }) {
             {item.override.clientNote}
           </p>
         )}
+
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <span className="text-sm font-semibold text-slate-950">
+            {isPrintReady ? "Instant Quote" : "Review details"}
+          </span>
+        </div>
       </div>
     </Link>
   );

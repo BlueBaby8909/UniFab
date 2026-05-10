@@ -24,7 +24,7 @@ This README is the working reference for the approved product workflow. The proj
 |---|---|---|
 | Quote Route | Complete | Interactive 3D model viewer and specific slicer-based pre-flight warnings are part of the approved flow. |
 | Print Request Route | Complete | Terms acceptance, final confirmation, visual status timeline, auto-generated payment slip, physical receipt verification, and admin undo are part of the approved flow. |
-| Design Library Route | In Progress | My Designs, draft-to-publish publishing, automated appropriateness screening, admin override, and Print Ready instant quoting are in the active workflow. |
+| Design Library Route | In Progress | My Designs, draft-to-publish publishing, rules + OpenAI text + thumbnail + generated 3D render moderation, admin override, audit history, and Print Ready separation are implemented. Remaining MMF admin workflows are still pending. |
 | Admin Routes | Pending | In-context MMF administration and `/admin/mmf-overrides` are pending admin workflows. |
 | Auth Route | Pending | Mandatory email verification is pending and must block print request submission for unverified users. |
 
@@ -43,7 +43,7 @@ This README is the working reference for the approved product workflow. The proj
 - Design library using local admin designs, user-submitted designs with automated appropriateness screening, and MyMiniFactory results.
 - "Print Ready" instant quoting for verified library designs.
 - Creator Dashboard / My Designs management for draft, screening, auto-approved, needs-admin-review, auto-rejected, admin-approved, admin-rejected, and hidden user designs.
-- Rules + AI moderation for client-uploaded design metadata, filenames, thumbnails, and generated model renders when practical.
+- Rules + OpenAI text moderation + thumbnail image moderation + generated 3D render moderation for client-uploaded design metadata, filenames, ownership/policy acknowledgement, thumbnails, and uploaded `.stl`, `.obj`, and `.3mf` files.
 - Admin override and audit history for automated Design Library decisions.
 - Admin readiness control for MyMiniFactory designs through in-context Design Library actions, MMF API file mapping when possible, and the `/admin/mmf-overrides` dashboard for existing overrides.
 - Custom design requests with reference file uploads.
@@ -133,11 +133,11 @@ This README is the working reference for the approved product workflow. The proj
 4. **Verified Designs:** If a design is tagged as "Print Ready," the user can click "Instant Quote" to bypass manual upload and proceed directly to quoting using the cached file.
 5. **Unverified MMF Designs:** If a MyMiniFactory design needs review, the user is provided an outbound link to download it directly from MyMiniFactory, after which they can manually upload it to the quote engine.
 6. **Community Submissions:** Authenticated users can manage their designs in My Designs / Creator Dashboard across Draft, Screening, Auto Approved, Needs Admin Review, Auto Rejected, Admin Approved, Admin Rejected, and Hidden states.
-7. Users can save designs as drafts before publishing. Publishing runs automated appropriateness screening using local rules plus AI moderation.
-8. Screening checks metadata, filenames, license/ownership confirmation, policy acknowledgement, thumbnails, and generated 3D model renders when practical.
+7. Users can save designs as drafts before publishing. Publishing runs automated appropriateness screening using local rules, OpenAI text moderation, thumbnail image moderation, and generated 3D render moderation when enabled.
+8. Screening checks metadata, filenames, license/ownership confirmation, policy acknowledgement, thumbnails, and generated renders for uploaded `.stl`, `.obj`, and `.3mf` files. If render generation fails, the design is routed to admin review rather than rejected.
 9. Screening can auto-approve low-risk designs, auto-reject clearly prohibited designs, or send uncertain designs to admin review.
 10. Rejected designs remain visible to the owner with moderation/admin feedback when policy allows.
-11. If an approved design is edited and the model file is replaced, it returns to screening/review, is hidden from the public library until approved again, and loses Print Ready status until the file is reverified.
+11. If an approved design is edited, it returns to screening/review, is hidden from the public library until approved again, and loses Print Ready status until the file is reverified.
 
 ### 4. Request Custom Design
 
@@ -210,9 +210,9 @@ Admins manage:
 - User-submitted community designs, including automated screening decisions, admin overrides, feedback notes, file previews/renders, and audit history
 - MyMiniFactory design overrides through in-context Design Library admin actions and the `/admin/mmf-overrides` dashboard.
 
-**Client-uploaded Design Moderation:** Published user designs run through automated appropriateness screening before public visibility. The screening pipeline combines auditable local rules with AI moderation for text metadata, filenames, thumbnails, and generated 3D model renders when practical. The system can auto-approve low-risk content, auto-reject clearly prohibited content, or send uncertain submissions to admin review. Admins remain able to view all decisions and override them by approving, rejecting, hiding, restoring, or sending a design back to review.
+**Client-uploaded Design Moderation:** Published user designs run through automated appropriateness screening before public visibility. The current screening pipeline runs in this order: local rules moderation, OpenAI text moderation, thumbnail image moderation, generated 3D render moderation, then final moderation decision. Render moderation generates PNG preview views for uploaded `.stl`, `.obj`, and `.3mf` files when enabled; render generation or moderation failures route the design to admin review. The system can auto-approve low-risk content when enabled, auto-reject clearly prohibited content, or send uncertain submissions to admin review. Admins can view moderation flags, summaries, decision sources, audit history, and override decisions by approving, rejecting, hiding, restoring, or sending a design back to review.
 
-Content approval and Print Ready approval are separate. Content-approved designs may appear in the public library, but only Print Ready designs use an admin-verified file for Instant Quote.
+Content approval and Print Ready approval are separate. Content-approved designs may appear in the public library, but only Print Ready designs use an admin-verified file for Instant Quote. Approved designs that are not Print Ready can be browsed and downloaded, but their instant quote action must stay disabled.
 
 **MyMiniFactory Workflow:** Admins can browse the public Design Library like users. MMF detail pages show an admin-only toolbar with actions such as Pin, Hide, Add/Edit Client Note, Mark as Print Ready, and editing other override fields already supported by the backend. When marking an MMF design as Print Ready, the system should warn admins to verify the design locally first. The system should map files through the MMF API when possible instead of requiring manual upload or manual local-file linking.
 
@@ -301,6 +301,20 @@ Automated and admin moderation decisions should preserve:
 - Status transitions with actor and timestamp.
 - Whether the design is content-approved, hidden, or Print Ready.
 
+### Current Route 3 Implementation Notes
+
+- Community design drafts, owner editing, publishing, admin moderation, Print Ready separation, and audit history are implemented.
+- Publishing currently runs automated screening in this order:
+  1. Local rules moderation.
+  2. OpenAI text moderation.
+  3. Thumbnail image moderation.
+  4. Generated 3D render moderation for `.stl`, `.obj`, and `.3mf` uploads when `DESIGN_RENDER_MODERATION_ENABLED=true`.
+  5. Final moderation decision.
+- Public Design Library visibility requires an active approved local design.
+- Instant Quote from a local design additionally requires `is_print_ready = TRUE`.
+- Admins review community submissions in `/admin/community-designs`.
+- Moderation decision source values are `none`, `rules`, `ai`, `render`, and `admin`.
+
 ## Important Data Snapshots
 
 Submitted print requests should preserve quote-related data so requests remain traceable after pricing/profile changes.
@@ -358,6 +372,12 @@ The backend expects environment variables for:
 - Mail settings
 - MyMiniFactory API settings
 - PrusaSlicer executable path
+- Design moderation settings:
+  - `DESIGN_AI_MODERATION_ENABLED`
+  - `DESIGN_IMAGE_MODERATION_ENABLED`
+  - `DESIGN_RENDER_MODERATION_ENABLED`
+  - `OPENAI_API_KEY`
+  - `OPENAI_MODERATION_MODEL` (defaults to `omni-moderation-latest` when unset)
 
 Do not commit real production secrets.
 

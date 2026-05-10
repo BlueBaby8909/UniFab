@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { API_BASE_URL } from "../../api/client";
 import {
@@ -67,25 +67,36 @@ export default function AdminCommunityDesignDetail() {
     [design?.moderationFlags],
   );
 
+  const loadDesignDetail = useCallback(async () => {
+    const data = await getAdminLocalDesignById(designId);
+    const payload = data.data || data;
+    const localDesign = payload.localDesign || payload.design;
+
+    if (localDesign?.sourceKind !== "community") {
+      throw new Error("This page only reviews community-submitted designs.");
+    }
+
+    return {
+      localDesign,
+      auditEvents: payload.auditEvents || [],
+    };
+  }, [designId]);
+
+  const applyDesignDetail = ({ localDesign, auditEvents }) => {
+    setDesign(localDesign);
+    setAuditEvents(auditEvents);
+    setError("");
+  };
+
   useEffect(() => {
     let isMounted = true;
 
     async function loadInitialDesign() {
       try {
-        const data = await getAdminLocalDesignById(designId);
-        const payload = data.data || data;
-        const localDesign = payload.localDesign || payload.design;
-
-        if (localDesign?.sourceKind !== "community") {
-          throw new Error(
-            "This page only reviews community-submitted designs.",
-          );
-        }
+        const detail = await loadDesignDetail();
 
         if (isMounted) {
-          setDesign(localDesign);
-          setAuditEvents(payload.auditEvents || []);
-          setError("");
+          applyDesignDetail(detail);
         }
       } catch (err) {
         if (isMounted) {
@@ -105,7 +116,7 @@ export default function AdminCommunityDesignDetail() {
     return () => {
       isMounted = false;
     };
-  }, [designId]);
+  }, [loadDesignDetail]);
 
   const handleModerationSubmit = async (event) => {
     event.preventDefault();
@@ -126,6 +137,7 @@ export default function AdminCommunityDesignDetail() {
       const payload = data.data || data;
 
       setDesign(payload.localDesign || payload.design);
+      applyDesignDetail(await loadDesignDetail());
       setAction("");
       setFeedback("");
       setMessage("Moderation action applied successfully.");
@@ -159,6 +171,7 @@ export default function AdminCommunityDesignDetail() {
       const payload = data.data || data;
 
       setDesign(payload.localDesign || payload.design);
+      applyDesignDetail(await loadDesignDetail());
       setMessage("Print Ready status updated successfully.");
     } catch (err) {
       setError(err.message);
