@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   createAdminDesignOverride,
   getMmfDesignByObjectId,
@@ -31,6 +31,20 @@ function overrideToForm(override) {
     isPrintReady: Boolean(override.isPrintReady),
     clientNote: override.clientNote || "",
   };
+}
+
+function getSafeReturnTo(searchParams) {
+  const returnTo = searchParams.get("returnTo");
+
+  if (!returnTo) {
+    return "/designs";
+  }
+
+  if (returnTo === "/designs" || returnTo.startsWith("/designs?")) {
+    return returnTo;
+  }
+
+  return "/designs";
 }
 
 function getMmfPreviewImage(design) {
@@ -94,7 +108,11 @@ function formatDimensions(dimensions) {
 export default function MmfDesignDetail() {
   const { objectId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isAdmin } = useAuth();
+
+  const returnTo = getSafeReturnTo(searchParams);
+  const encodedReturnTo = encodeURIComponent(returnTo);
 
   const [design, setDesign] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -117,6 +135,9 @@ export default function MmfDesignDetail() {
   const canQuoteDirectly = Boolean(isPrintReady && linkedLocalDesignId);
   const previewImage = getMmfPreviewImage(design);
   const designerName = getDesignerName(design?.designer);
+  const mappedLocalDesignPath = linkedLocalDesignId
+    ? `/designs/local/${linkedLocalDesignId}?returnTo=${encodedReturnTo}`
+    : null;
 
   const loadDesign = useCallback(async () => {
     const data = await getMmfDesignByObjectId(objectId);
@@ -270,7 +291,7 @@ export default function MmfDesignDetail() {
           title={design?.name || design?.title || "MyMiniFactory design"}
           description="Review the external MyMiniFactory reference and quote it only when FabLab marks it Print Ready."
           action={
-            <ButtonLink to="/designs" variant="secondary">
+            <ButtonLink to={returnTo} variant="secondary">
               Back to designs
             </ButtonLink>
           }
@@ -294,7 +315,7 @@ export default function MmfDesignDetail() {
             title="MyMiniFactory design not found."
             description="This catalog item may be unavailable or hidden from the design library."
             action={
-              <ButtonLink to="/designs" variant="secondary">
+              <ButtonLink to={returnTo} variant="secondary">
                 Back to designs
               </ButtonLink>
             }
@@ -382,9 +403,9 @@ export default function MmfDesignDetail() {
                   </SummaryItem>
 
                   <SummaryItem label="Mapped Local File">
-                    {linkedLocalDesignId ? (
+                    {mappedLocalDesignPath ? (
                       <ButtonLink
-                        to={`/designs/local/${linkedLocalDesignId}`}
+                        to={mappedLocalDesignPath}
                         size="sm"
                         variant="secondary"
                       >

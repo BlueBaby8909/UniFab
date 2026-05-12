@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "../api/client";
 import { getLocalDesignById } from "../api/designs";
 import { getActiveMaterials } from "../api/materials";
@@ -25,9 +25,25 @@ function formatSourceKind(sourceKind) {
   return sourceKind === "community" ? "Community Design" : "Lab Design";
 }
 
+function getSafeReturnTo(searchParams) {
+  const returnTo = searchParams.get("returnTo");
+
+  if (!returnTo) {
+    return "/designs";
+  }
+
+  if (returnTo === "/designs" || returnTo.startsWith("/designs?")) {
+    return returnTo;
+  }
+
+  return "/designs";
+}
+
 export default function LocalDesignDetail() {
   const { designId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = getSafeReturnTo(searchParams);
 
   const [design, setDesign] = useState(null);
   const [quoteForm, setQuoteForm] = useState({
@@ -152,7 +168,7 @@ export default function LocalDesignDetail() {
             "View design details, download the file, and request an instant quote when available."
           }
           action={
-            <ButtonLink to="/designs" variant="secondary">
+            <ButtonLink to={returnTo} variant="secondary">
               Back to designs
             </ButtonLink>
           }
@@ -172,7 +188,7 @@ export default function LocalDesignDetail() {
             title="Local design not found."
             description="The design may be unavailable or has been removed from the library."
             action={
-              <ButtonLink to="/designs" variant="secondary">
+              <ButtonLink to={returnTo} variant="secondary">
                 Back to designs
               </ButtonLink>
             }

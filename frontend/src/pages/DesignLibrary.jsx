@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "../api/client";
 import { getDesignTaxonomy, searchDesignLibrary } from "../api/designs";
 import { Button, ButtonLink } from "../components/ui/Button";
@@ -23,6 +23,8 @@ const DEFAULT_MMF_PAGINATION = {
   totalPages: 1,
   visibleCount: 0,
 };
+
+const DESIGN_TAB_VALUES = new Set(["local", "mmf"]);
 
 const LOCAL_SORT_VALUES = new Set([
   "newest",
@@ -167,7 +169,18 @@ function parseMmfPaginationPayload(mmfPayload, fallbackLimit) {
 }
 
 export default function DesignLibrary() {
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const activeTab = getAllowedSearchValue(
+    searchParams,
+    "tab",
+    DESIGN_TAB_VALUES,
+    "local",
+  );
+
+  const isLocalTab = activeTab === "local";
+  const isMmfTab = activeTab === "mmf";
 
   const submittedSearch = getSearchValue(searchParams, "q");
   const categoryFilter = getSearchValue(searchParams, "category");
@@ -212,6 +225,8 @@ export default function DesignLibrary() {
     "desc",
   );
 
+  const returnTo = `${location.pathname}${location.search}`;
+
   const [searchTerm, setSearchTerm] = useState(submittedSearch);
   const [localPagination, setLocalPagination] = useState(
     DEFAULT_LOCAL_PAGINATION,
@@ -255,6 +270,7 @@ export default function DesignLibrary() {
         setError("");
 
         const params = {
+          tab: activeTab,
           localPage,
           localLimit,
           localSort,
@@ -262,6 +278,9 @@ export default function DesignLibrary() {
 
         if (submittedSearch) {
           params.q = submittedSearch;
+        }
+
+        if (isMmfTab && submittedSearch) {
           params.mmfPage = mmfPage;
           params.mmfPerPage = mmfPerPage;
           params.mmfSort = mmfSort;
@@ -317,6 +336,7 @@ export default function DesignLibrary() {
 
     loadDesigns();
   }, [
+    activeTab,
     submittedSearch,
     categoryFilter,
     tagFilter,
@@ -329,10 +349,12 @@ export default function DesignLibrary() {
     mmfPerPage,
     mmfSort,
     mmfOrder,
+    isMmfTab,
   ]);
 
   const updateUrlFilters = (overrides = {}) => {
     const nextValues = {
+      tab: activeTab,
       q: submittedSearch,
       category: categoryFilter,
       tag: tagFilter,
@@ -349,6 +371,10 @@ export default function DesignLibrary() {
     };
 
     const nextParams = new URLSearchParams();
+
+    if (nextValues.tab && nextValues.tab !== "local") {
+      nextParams.set("tab", nextValues.tab);
+    }
 
     if (nextValues.q) {
       nextParams.set("q", nextValues.q);
@@ -382,7 +408,7 @@ export default function DesignLibrary() {
       nextParams.set("localLimit", String(nextValues.localLimit));
     }
 
-    if (nextValues.q) {
+    if (nextValues.tab === "mmf" && nextValues.q) {
       if (Number(nextValues.mmfPage) > 1) {
         nextParams.set("mmfPage", String(nextValues.mmfPage));
       }
@@ -415,29 +441,44 @@ export default function DesignLibrary() {
 
   const handleClearFilters = () => {
     setSearchTerm("");
-    setSearchParams(new URLSearchParams());
+
+    const nextParams = new URLSearchParams();
+
+    if (activeTab !== "local") {
+      nextParams.set("tab", activeTab);
+    }
+
+    setSearchParams(nextParams);
+  };
+
+  const handleTabChange = (tab) => {
+    updateUrlFilters({ tab });
   };
 
   const goToPreviousLocalPage = () => {
     updateUrlFilters({
+      tab: "local",
       localPage: Math.max(localPagination.page - 1, 1),
     });
   };
 
   const goToNextLocalPage = () => {
     updateUrlFilters({
+      tab: "local",
       localPage: Math.min(localPagination.page + 1, localPagination.totalPages),
     });
   };
 
   const goToPreviousMmfPage = () => {
     updateUrlFilters({
+      tab: "mmf",
       mmfPage: Math.max(mmfPagination.page - 1, 1),
     });
   };
 
   const goToNextMmfPage = () => {
     updateUrlFilters({
+      tab: "mmf",
       mmfPage: Math.min(mmfPagination.page + 1, mmfPagination.totalPages),
     });
   };
@@ -456,107 +497,13 @@ export default function DesignLibrary() {
               type="search"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search designs"
+              placeholder={
+                isMmfTab
+                  ? "Search MyMiniFactory designs"
+                  : "Search local designs"
+              }
               className="w-64"
             />
-
-            <SelectInput
-              value={categoryFilter}
-              onChange={(event) =>
-                updateUrlFilters({
-                  category: event.target.value,
-                  localPage: 1,
-                })
-              }
-              className="w-44"
-            >
-              <option value="">All categories</option>
-              {taxonomy.categories.map((category) => (
-                <option key={category.id} value={category.slug}>
-                  {category.name}
-                </option>
-              ))}
-            </SelectInput>
-
-            <SelectInput
-              value={tagFilter}
-              onChange={(event) =>
-                updateUrlFilters({
-                  tag: event.target.value,
-                  localPage: 1,
-                })
-              }
-              className="w-40"
-            >
-              <option value="">All tags</option>
-              {taxonomy.tags.map((tag) => (
-                <option key={tag.id} value={tag.slug}>
-                  {tag.name}
-                </option>
-              ))}
-            </SelectInput>
-
-            <SelectInput
-              value={sourceFilter}
-              onChange={(event) =>
-                updateUrlFilters({
-                  sourceKind: event.target.value,
-                  localPage: 1,
-                })
-              }
-              className="w-40"
-            >
-              <option value="">All sources</option>
-              <option value="lab">Lab designs</option>
-              <option value="community">Community designs</option>
-            </SelectInput>
-
-            <SelectInput
-              value={printReadyFilter}
-              onChange={(event) =>
-                updateUrlFilters({
-                  printReady: event.target.value,
-                  localPage: 1,
-                })
-              }
-              className="w-44"
-            >
-              <option value="">All availability</option>
-              <option value="true">Print Ready</option>
-              <option value="false">Review Only</option>
-            </SelectInput>
-
-            <SelectInput
-              value={localSort}
-              onChange={(event) =>
-                updateUrlFilters({
-                  localSort: event.target.value,
-                  localPage: 1,
-                })
-              }
-              className="w-44"
-            >
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="title_asc">Title A-Z</option>
-              <option value="title_desc">Title Z-A</option>
-              <option value="print_ready">Print Ready first</option>
-            </SelectInput>
-
-            <SelectInput
-              value={localLimit}
-              onChange={(event) =>
-                updateUrlFilters({
-                  localLimit: Number(event.target.value),
-                  localPage: 1,
-                })
-              }
-              className="w-32"
-            >
-              <option value={6}>6 / page</option>
-              <option value={12}>12 / page</option>
-              <option value={24}>24 / page</option>
-            </SelectInput>
 
             <Button type="submit">Search</Button>
 
@@ -570,6 +517,181 @@ export default function DesignLibrary() {
           </form>
         </div>
 
+        <div className="mt-6 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+          <CatalogTabButton
+            isActive={isLocalTab}
+            onClick={() => handleTabChange("local")}
+          >
+            Local Designs
+          </CatalogTabButton>
+
+          <CatalogTabButton
+            isActive={isMmfTab}
+            onClick={() => handleTabChange("mmf")}
+          >
+            MyMiniFactory Designs
+          </CatalogTabButton>
+        </div>
+
+        {isLocalTab && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <SelectInput
+              value={categoryFilter}
+              onChange={(event) =>
+                updateUrlFilters({
+                  tab: "local",
+                  category: event.target.value,
+                  localPage: 1,
+                })
+              }
+              className="w-36 text-sm"
+            >
+              <option value="">All categories</option>
+              {taxonomy.categories.map((category) => (
+                <option key={category.id} value={category.slug}>
+                  {category.name}
+                </option>
+              ))}
+            </SelectInput>
+
+            <SelectInput
+              value={tagFilter}
+              onChange={(event) =>
+                updateUrlFilters({
+                  tab: "local",
+                  tag: event.target.value,
+                  localPage: 1,
+                })
+              }
+              className="w-32 text-sm"
+            >
+              <option value="">All tags</option>
+              {taxonomy.tags.map((tag) => (
+                <option key={tag.id} value={tag.slug}>
+                  {tag.name}
+                </option>
+              ))}
+            </SelectInput>
+
+            <SelectInput
+              value={sourceFilter}
+              onChange={(event) =>
+                updateUrlFilters({
+                  tab: "local",
+                  sourceKind: event.target.value,
+                  localPage: 1,
+                })
+              }
+              className="w-32 text-sm"
+            >
+              <option value="">All sources</option>
+              <option value="lab">Lab designs</option>
+              <option value="community">Community designs</option>
+            </SelectInput>
+
+            <SelectInput
+              value={printReadyFilter}
+              onChange={(event) =>
+                updateUrlFilters({
+                  tab: "local",
+                  printReady: event.target.value,
+                  localPage: 1,
+                })
+              }
+              className="w-36 text-sm"
+            >
+              <option value="">All availability</option>
+              <option value="true">Print Ready</option>
+              <option value="false">Review Only</option>
+            </SelectInput>
+
+            <SelectInput
+              value={localSort}
+              onChange={(event) =>
+                updateUrlFilters({
+                  tab: "local",
+                  localSort: event.target.value,
+                  localPage: 1,
+                })
+              }
+              className="w-36 text-sm"
+            >
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="title_asc">Title A-Z</option>
+              <option value="title_desc">Title Z-A</option>
+              <option value="print_ready">Print Ready first</option>
+            </SelectInput>
+
+            <SelectInput
+              value={localLimit}
+              onChange={(event) =>
+                updateUrlFilters({
+                  tab: "local",
+                  localLimit: Number(event.target.value),
+                  localPage: 1,
+                })
+              }
+              className="w-24 text-sm"
+            >
+              <option value={6}>6 / page</option>
+              <option value={12}>12 / page</option>
+              <option value={24}>24 / page</option>
+            </SelectInput>
+          </div>
+        )}
+
+        {isMmfTab && submittedSearch && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <SelectInput
+              value={mmfSort}
+              onChange={(event) =>
+                updateUrlFilters({
+                  tab: "mmf",
+                  mmfSort: event.target.value,
+                  mmfPage: 1,
+                })
+              }
+              className="w-36 text-sm"
+            >
+              <option value="popularity">Most popular</option>
+              <option value="date">Newest on MMF</option>
+              <option value="visits">Most visited</option>
+            </SelectInput>
+
+            <SelectInput
+              value={mmfOrder}
+              onChange={(event) =>
+                updateUrlFilters({
+                  tab: "mmf",
+                  mmfOrder: event.target.value,
+                  mmfPage: 1,
+                })
+              }
+              className="w-24 text-sm"
+            >
+              <option value="desc">Desc</option>
+              <option value="asc">Asc</option>
+            </SelectInput>
+
+            <SelectInput
+              value={mmfPerPage}
+              onChange={(event) =>
+                updateUrlFilters({
+                  tab: "mmf",
+                  mmfPerPage: Number(event.target.value),
+                  mmfPage: 1,
+                })
+              }
+              className="w-24 text-sm"
+            >
+              <option value={12}>12 / page</option>
+              <option value={24}>24 / page</option>
+              <option value={36}>36 / page</option>
+            </SelectInput>
+          </div>
+        )}
+
         {isLoading && <p className="mt-6 text-slate-600">Loading designs...</p>}
 
         <Alert className="mt-6" type="error">
@@ -577,84 +699,98 @@ export default function DesignLibrary() {
         </Alert>
 
         {!isLoading && !error && (
-          <div className="mt-8 space-y-10">
-            <section>
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-slate-950">
-                    Local Designs
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {localPagination.totalCount} result
-                    {localPagination.totalCount === 1 ? "" : "s"} found
-                  </p>
-                </div>
-
-                <p className="text-sm text-slate-500">
-                  Page {localPagination.page} of {localPagination.totalPages}
-                </p>
-              </div>
-
-              {localDesigns.length === 0 ? (
-                <EmptyState
-                  className="mt-4"
-                  title="No local designs available."
-                  description="Try changing your search, filters, or sorting options."
-                />
-              ) : (
-                <>
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {localDesigns.map((design) => (
-                      <LocalDesignCard key={design.id} design={design} />
-                    ))}
-                  </div>
-
-                  {localPagination.totalPages > 1 && (
-                    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-sm text-slate-500">
-                        Showing page {localPagination.page} of{" "}
-                        {localPagination.totalPages}
-                      </p>
-
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          disabled={localPagination.page <= 1}
-                          onClick={goToPreviousLocalPage}
-                        >
-                          Previous
-                        </Button>
-
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          disabled={
-                            localPagination.page >= localPagination.totalPages
-                          }
-                          onClick={goToNextLocalPage}
-                        >
-                          Next
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </section>
-
-            {submittedSearch && (
+          <div className="mt-8">
+            {isLocalTab && (
               <section>
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <h2 className="text-xl font-semibold text-slate-950">
-                      MyMiniFactory Results
+                      Local Designs
                     </h2>
                     <p className="mt-1 text-sm text-slate-500">
-                      {mmfPagination.totalCount} external result
-                      {mmfPagination.totalCount === 1 ? "" : "s"} found ·{" "}
-                      {mmfPagination.visibleCount} visible on this page
+                      {localPagination.totalCount} result
+                      {localPagination.totalCount === 1 ? "" : "s"} found
                     </p>
+                  </div>
+
+                  <p className="text-sm text-slate-500">
+                    Page {localPagination.page} of {localPagination.totalPages}
+                  </p>
+                </div>
+
+                {localDesigns.length === 0 ? (
+                  <EmptyState
+                    className="mt-4"
+                    title="No local designs available."
+                    description="Try changing your search, filters, or sorting options."
+                  />
+                ) : (
+                  <>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {localDesigns.map((design) => (
+                        <LocalDesignCard
+                          key={design.id}
+                          design={design}
+                          returnTo={returnTo}
+                        />
+                      ))}
+                    </div>
+
+                    {localPagination.totalPages > 1 && (
+                      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-slate-500">
+                          Showing page {localPagination.page} of{" "}
+                          {localPagination.totalPages}
+                        </p>
+
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={localPagination.page <= 1}
+                            onClick={goToPreviousLocalPage}
+                          >
+                            Previous
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={
+                              localPagination.page >= localPagination.totalPages
+                            }
+                            onClick={goToNextLocalPage}
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
+            )}
+
+            {isMmfTab && (
+              <section>
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-950">
+                      MyMiniFactory Designs
+                    </h2>
+
+                    {submittedSearch ? (
+                      <p className="mt-1 text-sm text-slate-500">
+                        {mmfPagination.totalCount} external result
+                        {mmfPagination.totalCount === 1 ? "" : "s"} found ·{" "}
+                        {mmfPagination.visibleCount} visible on this page
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-sm text-slate-500">
+                        Search for a MyMiniFactory design to show external
+                        references.
+                      </p>
+                    )}
                   </div>
 
                   {mmfStatus && !mmfStatus.available && (
@@ -664,53 +800,13 @@ export default function DesignLibrary() {
                   )}
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <SelectInput
-                    value={mmfSort}
-                    onChange={(event) =>
-                      updateUrlFilters({
-                        mmfSort: event.target.value,
-                        mmfPage: 1,
-                      })
-                    }
-                    className="w-44"
-                  >
-                    <option value="popularity">Most popular</option>
-                    <option value="date">Newest on MMF</option>
-                    <option value="visits">Most visited</option>
-                  </SelectInput>
-
-                  <SelectInput
-                    value={mmfOrder}
-                    onChange={(event) =>
-                      updateUrlFilters({
-                        mmfOrder: event.target.value,
-                        mmfPage: 1,
-                      })
-                    }
-                    className="w-32"
-                  >
-                    <option value="desc">Desc</option>
-                    <option value="asc">Asc</option>
-                  </SelectInput>
-
-                  <SelectInput
-                    value={mmfPerPage}
-                    onChange={(event) =>
-                      updateUrlFilters({
-                        mmfPerPage: Number(event.target.value),
-                        mmfPage: 1,
-                      })
-                    }
-                    className="w-36"
-                  >
-                    <option value={12}>12 / page</option>
-                    <option value={24}>24 / page</option>
-                    <option value={36}>36 / page</option>
-                  </SelectInput>
-                </div>
-
-                {mmfItems.length === 0 ? (
+                {!submittedSearch ? (
+                  <EmptyState
+                    className="mt-4"
+                    title="Search MyMiniFactory designs."
+                    description="Enter a keyword above to browse external MyMiniFactory references."
+                  />
+                ) : mmfItems.length === 0 ? (
                   <EmptyState
                     className="mt-4"
                     title="No MyMiniFactory results found."
@@ -720,7 +816,11 @@ export default function DesignLibrary() {
                   <>
                     <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       {mmfItems.map((item) => (
-                        <MmfDesignCard key={item.id} item={item} />
+                        <MmfDesignCard
+                          key={item.id}
+                          item={item}
+                          returnTo={returnTo}
+                        />
                       ))}
                     </div>
 
@@ -765,9 +865,26 @@ export default function DesignLibrary() {
   );
 }
 
-function LocalDesignCard({ design }) {
+function CatalogTabButton({ isActive, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
+        isActive
+          ? "bg-slate-950 text-white shadow-sm"
+          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function LocalDesignCard({ design, returnTo }) {
   const isPrintReady = Boolean(design.isPrintReady);
-  const detailPath = `/designs/local/${design.id}`;
+  const encodedReturnTo = encodeURIComponent(returnTo || "/designs");
+  const detailPath = `/designs/local/${design.id}?returnTo=${encodedReturnTo}`;
   const quotePath = `${detailPath}#quote`;
 
   return (
@@ -825,15 +942,17 @@ function LocalDesignCard({ design }) {
   );
 }
 
-function MmfDesignCard({ item }) {
+function MmfDesignCard({ item, returnTo }) {
   const isPrintReady = Boolean(item.override?.isPrintReady);
   const isPinned = Boolean(item.override?.isPinned);
   const thumbnailUrl = getMmfThumbnailUrl(item);
   const title = item.name || item.title || `Object ${item.id}`;
+  const encodedReturnTo = encodeURIComponent(returnTo || "/designs");
+  const detailPath = `/designs/mmf/${item.id}?returnTo=${encodedReturnTo}`;
 
   return (
     <Link
-      to={`/designs/mmf/${item.id}`}
+      to={detailPath}
       className={`group overflow-hidden rounded-xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
         isPinned
           ? "border-amber-300 ring-2 ring-amber-100 hover:border-amber-400"
